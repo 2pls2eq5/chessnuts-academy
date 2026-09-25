@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getStudentLevelLabel } from '../constants/studentLevels'
+import AcademyHeader from '../components/AcademyHeader'
 
 function StudentDetail({ studentId }) {
   const [loading, setLoading] = useState(true)
@@ -44,63 +45,30 @@ function StudentDetail({ studentId }) {
     loadStudent()
   }, [studentId])
 
-  /* =========================
-     LOADING
-  ========================= */
-
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'Arial, sans-serif',
-        }}
-      >
-        Loading student...
+      <div className="academy-app">
+        <AcademyHeader />
+
+        <div className="page-state">
+          Loading student...
+        </div>
       </div>
     )
   }
 
-  /* =========================
-     ERROR
-  ========================= */
-
   if (error) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          padding: '40px',
-          fontFamily: 'Arial, sans-serif',
-        }}
-      >
+      <div className="error-page">
         <h1>Chessnuts Academy</h1>
 
-        <p
-          style={{
-            color: '#b00020',
-          }}
-        >
-          {error}
-        </p>
+        <p>{error}</p>
 
         <button
+          className="btn btn-primary"
           onClick={() => {
             window.location.href =
               '/students'
-          }}
-          style={{
-            marginTop: '20px',
-            background: '#111',
-            color: 'white',
-            border: 'none',
-            borderRadius: '10px',
-            padding: '12px 18px',
-            fontWeight: '700',
-            cursor: 'pointer',
           }}
         >
           Back to Students
@@ -130,262 +98,97 @@ function StudentDetail({ studentId }) {
     ).toLocaleDateString('en-GB')
   }
 
-  /* =========================
-     STUDENT DETAIL
-  ========================= */
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#f7f7f4',
-        fontFamily: 'Arial, sans-serif',
-      }}
-    >
-      {/* =========================
-          HEADER
-      ========================= */}
+    <div className="academy-app">
+      <AcademyHeader />
 
-      <header
-        style={{
-          background: '#111',
-          color: 'white',
-          padding: '20px 40px',
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: '24px',
-          }}
-        >
-          Chessnuts Academy
-        </h1>
-      </header>
-
-      <main
-        style={{
-          maxWidth: '900px',
-          margin: '0 auto',
-          padding: '40px 24px',
-        }}
-      >
-        {/* =========================
-            BACK
-        ========================= */}
-
-        <button
-          onClick={() => {
-            window.location.href =
-              '/students'
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            marginBottom: '24px',
-            color: '#555',
-            fontSize: '15px',
-            cursor: 'pointer',
-          }}
-        >
-          ← Back to Students
-        </button>
-
-        {/* =========================
-            TITLE
-        ========================= */}
-
-        <div
-          style={{
-            marginBottom: '28px',
-          }}
-        >
-          <h2
-            style={{
-              margin: '0 0 8px',
-              fontSize: '32px',
+      <main className="academy-main">
+        <div className="detail-back">
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              window.location.href =
+                '/students'
             }}
           >
-            {displayName}
-          </h2>
-
-          <p
-            style={{
-              margin: 0,
-              color: '#666',
-            }}
-          >
-            Student profile
-          </p>
+            ← Back to Students
+          </button>
         </div>
 
-        {/* =========================
-            BASIC INFORMATION
-        ========================= */}
+        <div className="detail-heading">
+          <h1>{displayName}</h1>
 
-        <section
-          style={{
-            background: 'white',
-            border: '1px solid #e0e0dc',
-            borderRadius: '16px',
-            padding: '28px',
-          }}
-        >
-          <h3
-            style={{
-              margin: '0 0 24px',
-              fontSize: '20px',
-            }}
-          >
+          <p>Student profile</p>
+        </div>
+
+        <section className="card detail-card">
+          <h2 className="detail-card-title">
             Basic Information
-          </h3>
+          </h2>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '24px',
-            }}
-          >
-            {/* NAME */}
-
+          <div className="detail-grid">
             <div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: '#777',
-                  marginBottom: '6px',
-                }}
-              >
+              <div className="detail-label">
                 Name
               </div>
 
-              <div
-                style={{
-                  fontWeight: '700',
-                  fontSize: '16px',
-                }}
-              >
+              <div className="detail-value detail-value-strong">
                 {displayName}
               </div>
             </div>
 
-            {/* USERNAME */}
-
             <div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: '#777',
-                  marginBottom: '6px',
-                }}
-              >
+              <div className="detail-label">
                 Username
               </div>
 
-              <div
-                style={{
-                  fontSize: '16px',
-                }}
-              >
+              <div className="detail-value">
                 {username}
               </div>
             </div>
 
-            {/* DATE OF BIRTH */}
-
             <div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: '#777',
-                  marginBottom: '6px',
-                }}
-              >
+              <div className="detail-label">
                 Date of Birth
               </div>
 
-              <div
-                style={{
-                  fontSize: '16px',
-                }}
-              >
+              <div className="detail-value">
                 {formatDate(
                   student.date_of_birth
                 )}
               </div>
             </div>
 
-            {/* JOIN DATE */}
-
             <div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: '#777',
-                  marginBottom: '6px',
-                }}
-              >
+              <div className="detail-label">
                 Join Date
               </div>
 
-              <div
-                style={{
-                  fontSize: '16px',
-                }}
-              >
+              <div className="detail-value">
                 {formatDate(
                   student.join_date
                 )}
               </div>
             </div>
 
-            {/* LEVEL */}
-
             <div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: '#777',
-                  marginBottom: '6px',
-                }}
-              >
+              <div className="detail-label">
                 Level
               </div>
 
-              <div
-                style={{
-                  fontSize: '16px',
-                }}
-              >
+              <div className="detail-value">
                 {getStudentLevelLabel(
                   student.level
                 )}
               </div>
             </div>
 
-            {/* STATUS */}
-
             <div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: '#777',
-                  marginBottom: '6px',
-                }}
-              >
+              <div className="detail-label">
                 Status
               </div>
 
-              <div
-                style={{
-                  fontSize: '16px',
-                  textTransform:
-                    'capitalize',
-                }}
-              >
+              <div className="detail-value">
                 {student.status || '—'}
               </div>
             </div>
