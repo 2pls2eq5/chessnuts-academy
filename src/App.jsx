@@ -92,57 +92,49 @@ function App() {
         return
       }
 
-      /* =========================
-         DASHBOARD STATS
-      ========================= */
+/* =========================
+   DASHBOARD STATS
+========================= */
 
-      const [
-        studentsResult,
-        coachesResult,
-        parentsResult,
-      ] = await Promise.all([
-        supabase
-          .from('students')
-          .select('id', { count: 'exact', head: true }),
+const studentsResult = await supabase
+  .from('students')
+  .select('id')
 
-        supabase
-          .from('coaches')
-          .select('id', { count: 'exact', head: true }),
+console.log('STUDENTS RESULT:', studentsResult)
 
-        supabase
-          .from('parents')
-          .select('id', { count: 'exact', head: true }),
-      ])
+const coachesResult = await supabase
+  .from('coaches')
+  .select('id', { count: 'exact', head: true })
 
-      if (studentsResult.error) {
-        setError(studentsResult.error.message)
-        setLoading(false)
-        return
-      }
+const parentsResult = await supabase
+  .from('parents')
+  .select('id', { count: 'exact', head: true })
 
-      if (coachesResult.error) {
-        setError(coachesResult.error.message)
-        setLoading(false)
-        return
-      }
+if (studentsResult.error) {
+  setError(studentsResult.error.message)
+  setLoading(false)
+  return
+}
 
-      if (parentsResult.error) {
-        setError(parentsResult.error.message)
-        setLoading(false)
-        return
-      }
+if (coachesResult.error) {
+  setError(coachesResult.error.message)
+  setLoading(false)
+  return
+}
 
-      setStats({
-        students: studentsResult.count || 0,
-        coaches: coachesResult.count || 0,
-        parents: parentsResult.count || 0,
-      })
+if (parentsResult.error) {
+  setError(parentsResult.error.message)
+  setLoading(false)
+  return
+}
 
-      setLoading(false)
-    }
+setStats({
+  students: studentsResult.data?.length || 0,
+  coaches: coachesResult.count || 0,
+  parents: parentsResult.count || 0,
+})
 
-    initDashboard()
-  }, [])
+setLoading(false)
 
   /* =========================
      LOADING
