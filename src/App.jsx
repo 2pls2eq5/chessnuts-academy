@@ -96,64 +96,43 @@ function App() {
          DASHBOARD STATS
       ========================= */
 
-      const studentsResult = await supabase
-        .from('students')
-        .select('id')
+const studentsResult = await supabase
+  .from('students')
+  .select('id')
 
-      console.log(
-        'STUDENTS RESULT:',
-        studentsResult
-      )
+const coachesResult = await supabase
+  .from('coaches')
+  .select('id')
 
-      const coachesResult = await supabase
-        .from('coaches')
-        .select('id', {
-          count: 'exact',
-          head: true,
-        })
+const parentsResult = await supabase
+  .from('parents')
+  .select('id')
 
-      const parentsResult = await supabase
-        .from('parents')
-        .select('id', {
-          count: 'exact',
-          head: true,
-        })
+if (studentsResult.error) {
+  setError(studentsResult.error.message)
+  setLoading(false)
+  return
+}
 
-      if (studentsResult.error) {
-        setError(
-          studentsResult.error.message
-        )
-        setLoading(false)
-        return
-      }
+if (coachesResult.error) {
+  setError(coachesResult.error.message)
+  setLoading(false)
+  return
+}
 
-      if (coachesResult.error) {
-        setError(
-          coachesResult.error.message
-        )
-        setLoading(false)
-        return
-      }
+if (parentsResult.error) {
+  setError(parentsResult.error.message)
+  setLoading(false)
+  return
+}
 
-      if (parentsResult.error) {
-        setError(
-          parentsResult.error.message
-        )
-        setLoading(false)
-        return
-      }
+setStats({
+  students: studentsResult.data?.length || 0,
+  coaches: coachesResult.data?.length || 0,
+  parents: parentsResult.data?.length || 0,
+})
 
-      setStats({
-        students:
-          studentsResult.data?.length || 0,
-        coaches:
-          coachesResult.count || 0,
-        parents:
-          parentsResult.count || 0,
-      })
-
-      setLoading(false)
-    }
+setLoading(false)
 
     initDashboard()
   }, [])
