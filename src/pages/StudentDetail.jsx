@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getStudentLevelLabel } from '../constants/studentLevels'
 
 function StudentDetail({ studentId }) {
   const [loading, setLoading] = useState(true)
@@ -359,7 +360,9 @@ function StudentDetail({ studentId }) {
                   fontSize: '16px',
                 }}
               >
-                {student.level || '—'}
+                {getStudentLevelLabel(
+                  student.level
+                )}
               </div>
             </div>
 
