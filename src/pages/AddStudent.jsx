@@ -62,10 +62,46 @@ function AddStudent({ user, profile }) {
       )
 
       if (functionError) {
-        throw new Error(
-          functionError.message ||
-            'Failed to create student.'
+        console.error(
+          'EDGE FUNCTION ERROR:',
+          functionError
         )
+
+        let message =
+          functionError.message ||
+          'Failed to create student.'
+
+        if (functionError.context) {
+          try {
+            const response =
+              functionError.context
+
+            const responseBody =
+              await response.json()
+
+            console.error(
+              'EDGE FUNCTION RESPONSE:',
+              responseBody
+            )
+
+            if (responseBody?.error) {
+              message =
+                responseBody.error
+            }
+
+            if (responseBody?.message) {
+              message =
+                responseBody.message
+            }
+          } catch (parseError) {
+            console.error(
+              'Could not parse Edge Function response:',
+              parseError
+            )
+          }
+        }
+
+        throw new Error(message)
       }
 
       if (!data?.success) {
@@ -77,7 +113,10 @@ function AddStudent({ user, profile }) {
 
       setCreatedStudent(data)
     } catch (err) {
-      console.error(err)
+      console.error(
+        'ADD STUDENT ERROR:',
+        err
+      )
 
       setError(
         err instanceof Error
