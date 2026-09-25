@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getStudentLevelLabel } from '../constants/studentLevels'
 
 function Students() {
   const [loading, setLoading] = useState(true)
@@ -176,9 +177,10 @@ function Students() {
           </div>
 
           <button
-             onClick={() => {
-    window.location.href = '/students/add'
-  }}
+            onClick={() => {
+              window.location.href =
+                '/students/add'
+            }}
             style={{
               background: '#111',
               color: 'white',
@@ -358,8 +360,9 @@ function Students() {
                             color: '#555',
                           }}
                         >
-                          {student.level ||
-                            '—'}
+                          {getStudentLevelLabel(
+                            student.level
+                          )}
                         </td>
 
                         <td
