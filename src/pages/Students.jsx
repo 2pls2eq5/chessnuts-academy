@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-function Students({ user, profile }) {
+function Students() {
   const [loading, setLoading] = useState(true)
   const [students, setStudents] = useState([])
   const [search, setSearch] = useState('')
@@ -117,10 +117,6 @@ function Students({ user, profile }) {
         fontFamily: 'Arial, sans-serif',
       }}
     >
-      {/* =========================
-          HEADER
-      ========================= */}
-
       <header
         style={{
           background: '#111',
@@ -321,24 +317,36 @@ function Students({ user, profile }) {
                         style={{
                           borderTop:
                             '1px solid #eeeeea',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => {
-                          console.log(
-                            'Selected student:',
-                            student
-                          )
                         }}
                       >
                         <td
                           style={{
                             padding: '18px 20px',
-                            fontWeight: '700',
                           }}
                         >
-                          {student.profiles
-                            ?.display_name ||
-                            'Unnamed Student'}
+                          <button
+                            onClick={() => {
+                              window.location.href =
+                                `/students/${student.id}`
+                            }}
+                            style={{
+                              background:
+                                'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize:
+                                'inherit',
+                              fontWeight: '700',
+                              cursor:
+                                'pointer',
+                              color:
+                                '#111',
+                            }}
+                          >
+                            {student.profiles
+                              ?.display_name ||
+                              'Unnamed Student'}
+                          </button>
                         </td>
 
                         <td
@@ -347,7 +355,8 @@ function Students({ user, profile }) {
                             color: '#555',
                           }}
                         >
-                          {student.level || '—'}
+                          {student.level ||
+                            '—'}
                         </td>
 
                         <td
@@ -356,7 +365,8 @@ function Students({ user, profile }) {
                             color: '#555',
                           }}
                         >
-                          {student.status || '—'}
+                          {student.status ||
+                            '—'}
                         </td>
 
                         <td
