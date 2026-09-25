@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
+import StudentDetail from './pages/StudentDetail'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -162,11 +163,27 @@ function App() {
      ROUTING
   ========================= */
 
-  const path = window.location.pathname
+  const path =
+    window.location.pathname
 
   if (path === '/students') {
     return (
       <Students
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
+  if (
+    path.startsWith('/students/')
+  ) {
+    const studentId =
+      path.split('/')[2]
+
+    return (
+      <StudentDetail
+        studentId={studentId}
         user={user}
         profile={profile}
       />
