@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { STUDENT_LEVELS } from '../constants/studentLevels'
 
 function AddStudent({ user, profile }) {
   const [displayName, setDisplayName] = useState('')
@@ -614,68 +615,45 @@ function AddStudent({ user, profile }) {
           {/* LEVEL */}
 
           <div
-  style={{
-    marginBottom: '20px',
-  }}
->
-  <label
-    style={{
-      display: 'block',
-      marginBottom: '6px',
-      fontWeight: 'bold',
-    }}
-  >
-    Level
-  </label>
+            style={{
+              marginBottom: '20px',
+            }}
+          >
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '6px',
+                fontWeight: 'bold',
+              }}
+            >
+              Level
+            </label>
 
-  <select
-    value={level}
-    onChange={(event) =>
-      setLevel(event.target.value)
-    }
-    disabled={loading}
-    style={{
-      width: '100%',
-      boxSizing: 'border-box',
-      padding: '10px',
-      border: '1px solid #ccc',
-      borderRadius: '6px',
-      background: '#fff',
-    }}
-  >
-    <option value="BASIC_1">
-      Basic I
-    </option>
-
-    <option value="BASIC_2">
-      Basic II
-    </option>
-
-    <option value="INTERMEDIATE_1">
-      Intermediate I
-    </option>
-
-    <option value="INTERMEDIATE_2">
-      Intermediate II
-    </option>
-
-    <option value="ADVANCED_1">
-      Advanced I
-    </option>
-
-    <option value="ADVANCED_2">
-      Advanced II
-    </option>
-
-    <option value="EXPERT_1">
-      Expert I
-    </option>
-
-    <option value="EXPERT_2">
-      Expert II
-    </option>
-  </select>
-</div>
+            <select
+              value={level}
+              onChange={(event) =>
+                setLevel(event.target.value)
+              }
+              disabled={loading}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '10px',
+                border: '1px solid #ccc',
+                borderRadius: '6px',
+                background: '#fff',
+              }}
+            >
+              {STUDENT_LEVELS.map((item) => (
+                <option
+                  key={item.value}
+                  value={item.value}
+                >
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* STATUS */}
 
