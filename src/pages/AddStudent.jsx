@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { STUDENT_LEVELS } from '../constants/studentLevels'
+import AcademyHeader from '../components/AcademyHeader'
 
-function AddStudent({ user, profile }) {
+function AddStudent() {
   const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
@@ -14,7 +15,8 @@ function AddStudent({ user, profile }) {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [createdStudent, setCreatedStudent] = useState(null)
+  const [createdStudent, setCreatedStudent] =
+    useState(null)
   const [copied, setCopied] = useState(false)
 
   async function handleSubmit(event) {
@@ -33,7 +35,11 @@ function AddStudent({ user, profile }) {
       return
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+    if (
+      !/^[a-zA-Z0-9_]+$/.test(
+        username.trim()
+      )
+    ) {
       setError(
         'Username can only contain letters, numbers, and underscores.'
       )
@@ -43,10 +49,6 @@ function AddStudent({ user, profile }) {
     setLoading(true)
 
     try {
-      // --------------------------------------------------
-      // Get current login session
-      // --------------------------------------------------
-
       const {
         data: sessionData,
         error: sessionError,
@@ -67,10 +69,6 @@ function AddStudent({ user, profile }) {
         )
       }
 
-      // --------------------------------------------------
-      // Call Edge Function
-      // --------------------------------------------------
-
       const {
         data,
         error: functionError,
@@ -79,7 +77,8 @@ function AddStudent({ user, profile }) {
         {
           body: {
             username: username.trim(),
-            display_name: displayName.trim(),
+            display_name:
+              displayName.trim(),
             date_of_birth:
               dateOfBirth || null,
             join_date:
@@ -87,17 +86,12 @@ function AddStudent({ user, profile }) {
             level,
             status,
           },
-
           headers: {
             Authorization:
               `Bearer ${accessToken}`,
           },
         }
       )
-
-      // --------------------------------------------------
-      // Handle Edge Function error
-      // --------------------------------------------------
 
       if (functionError) {
         console.error(
@@ -142,20 +136,12 @@ function AddStudent({ user, profile }) {
         throw new Error(message)
       }
 
-      // --------------------------------------------------
-      // Validate success response
-      // --------------------------------------------------
-
       if (!data?.success) {
         throw new Error(
           data?.error ||
             'Failed to create student.'
         )
       }
-
-      // --------------------------------------------------
-      // Student successfully created
-      // --------------------------------------------------
 
       setCreatedStudent(data)
     } catch (err) {
@@ -199,533 +185,287 @@ function AddStudent({ user, profile }) {
     }
   }
 
-  // ==================================================
-  // SUCCESS SCREEN
-  // ==================================================
-
   if (createdStudent) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: '#f5f5f5',
-          padding: '40px',
-          fontFamily: 'Arial, sans-serif',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '700px',
-            margin: '0 auto',
-            background: '#ffffff',
-            borderRadius: '12px',
-            padding: '32px',
-            boxShadow:
-              '0 2px 10px rgba(0,0,0,0.08)',
-          }}
-        >
-          <h1
-            style={{
-              marginTop: 0,
-            }}
-          >
-            Student Account Created
-          </h1>
+      <div className="academy-app">
+        <AcademyHeader />
 
-          <p>
-            The Chessnuts account and Academy
-            student record have been created
-            successfully.
-          </p>
-
-          <div
-            style={{
-              marginTop: '24px',
-              padding: '20px',
-              background: '#f7f7f7',
-              borderRadius: '8px',
-            }}
-          >
-            <div
-              style={{
-                marginBottom: '16px',
-              }}
-            >
-              <strong>Name</strong>
-
-              <div>
-                {createdStudent.display_name}
-              </div>
+        <main className="academy-main">
+          <div className="card success-card">
+            <div className="success-icon">
+              ✓
             </div>
 
-            <div
-              style={{
-                marginBottom: '16px',
-              }}
-            >
-              <strong>Username</strong>
+            <h1>
+              Student Account Created
+            </h1>
 
-              <div
-                style={{
-                  fontFamily: 'monospace',
-                  fontSize: '18px',
-                }}
-              >
-                {createdStudent.username}
-              </div>
-            </div>
-
-            <div>
-              <strong>Initial Password</strong>
-
-              <div
-                style={{
-                  fontFamily: 'monospace',
-                  fontSize: '18px',
-                  wordBreak: 'break-all',
-                }}
-              >
-                {createdStudent.initial_password}
-              </div>
-            </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: '20px',
-              padding: '16px',
-              background: '#fff8e1',
-              borderRadius: '8px',
-              fontSize: '14px',
-            }}
-          >
-            <strong>Important:</strong>
-
-            <p
-              style={{
-                marginBottom: 0,
-              }}
-            >
-              This password is shown only now.
-              Make sure you save it or give it
-              to the student or parent.
+            <p>
+              The Chessnuts account and
+              Academy student record have
+              been created successfully.
             </p>
+
+            <div className="credentials-box">
+              <div className="credential-row">
+                <div className="credential-label">
+                  Name
+                </div>
+
+                <div className="credential-value">
+                  {createdStudent.display_name}
+                </div>
+              </div>
+
+              <div className="credential-row">
+                <div className="credential-label">
+                  Username
+                </div>
+
+                <div className="credential-value credential-code">
+                  {createdStudent.username}
+                </div>
+              </div>
+
+              <div className="credential-row">
+                <div className="credential-label">
+                  Initial Password
+                </div>
+
+                <div className="credential-value credential-code">
+                  {
+                    createdStudent.initial_password
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div className="important-box">
+              <strong>Important</strong>
+
+              <p>
+                This password is shown only
+                now. Make sure you save it or
+                give it to the student or
+                parent.
+              </p>
+            </div>
+
+            <div className="success-actions">
+              <button
+                className="btn btn-primary"
+                onClick={copyCredentials}
+              >
+                {copied
+                  ? 'Copied!'
+                  : 'Copy Credentials'}
+              </button>
+
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  window.location.href =
+                    `/students/${createdStudent.student_id}`
+                }}
+              >
+                Open Student
+              </button>
+
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  window.location.href =
+                    '/students'
+                }}
+              >
+                Back to Students
+              </button>
+            </div>
           </div>
-
-          <div
-            style={{
-              display: 'flex',
-              gap: '12px',
-              marginTop: '24px',
-              flexWrap: 'wrap',
-            }}
-          >
-            <button
-              onClick={copyCredentials}
-              style={{
-                padding: '10px 16px',
-                border: 'none',
-                borderRadius: '6px',
-                background: '#111',
-                color: '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              {copied
-                ? 'Copied!'
-                : 'Copy Credentials'}
-            </button>
-
-            <button
-              onClick={() => {
-                window.location.href =
-                  `/students/${createdStudent.student_id}`
-              }}
-              style={{
-                padding: '10px 16px',
-                border: '1px solid #ccc',
-                borderRadius: '6px',
-                background: '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              Open Student
-            </button>
-
-            <button
-              onClick={() => {
-                window.location.href =
-                  '/students'
-              }}
-              style={{
-                padding: '10px 16px',
-                border: '1px solid #ccc',
-                borderRadius: '6px',
-                background: '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              Back to Students
-            </button>
-          </div>
-        </div>
+        </main>
       </div>
     )
   }
 
-  // ==================================================
-  // ADD STUDENT FORM
-  // ==================================================
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#f5f5f5',
-        padding: '40px',
-        fontFamily: 'Arial, sans-serif',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: '700px',
-          margin: '0 auto',
-          background: '#ffffff',
-          borderRadius: '12px',
-          padding: '32px',
-          boxShadow:
-            '0 2px 10px rgba(0,0,0,0.08)',
-        }}
-      >
-        <button
-          onClick={() => {
-            window.location.href =
-              '/students'
-          }}
-          style={{
-            marginBottom: '20px',
-            border: 'none',
-            background: 'none',
-            padding: 0,
-            cursor: 'pointer',
-          }}
-        >
-          ← Back to Students
-        </button>
+    <div className="academy-app">
+      <AcademyHeader />
 
-        <h1
-          style={{
-            marginTop: 0,
-          }}
-        >
-          Add Student
-        </h1>
-
-        <p
-          style={{
-            color: '#666',
-          }}
-        >
-          Create a Chessnuts account and
-          Academy student record.
-        </p>
-
-        {error && (
-          <div
-            style={{
-              marginTop: '20px',
-              padding: '12px',
-              background: '#ffecec',
-              color: '#b00020',
-              borderRadius: '6px',
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            marginTop: '24px',
-          }}
-        >
-          {/* STUDENT NAME */}
-
-          <div
-            style={{
-              marginBottom: '20px',
-            }}
-          >
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 'bold',
+      <main className="academy-main">
+        <div className="form-card card">
+          <div className="detail-back">
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                window.location.href =
+                  '/students'
               }}
             >
-              Student Name
-            </label>
-
-            <input
-              type="text"
-              value={displayName}
-              onChange={(event) =>
-                setDisplayName(
-                  event.target.value
-                )
-              }
-              placeholder="e.g. Jonathan"
-              disabled={loading}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px',
-                border:
-                  '1px solid #ccc',
-                borderRadius: '6px',
-              }}
-            />
+              ← Back to Students
+            </button>
           </div>
 
-          {/* USERNAME */}
+          <div className="form-header">
+            <h1>Add Student</h1>
 
-          <div
-            style={{
-              marginBottom: '20px',
-            }}
-          >
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 'bold',
-              }}
-            >
-              Username
-            </label>
+            <p>
+              Create a Chessnuts account and
+              Academy student record.
+            </p>
+          </div>
 
-            <input
-              type="text"
-              value={username}
-              onChange={(event) =>
-                setUsername(
-                  event.target.value
-                )
-              }
-              placeholder="e.g. jonathan123"
-              disabled={loading}
-              autoComplete="off"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px',
-                border:
-                  '1px solid #ccc',
-                borderRadius: '6px',
-              }}
-            />
-
-            <div
-              style={{
-                marginTop: '6px',
-                fontSize: '13px',
-                color: '#777',
-              }}
-            >
-              Letters, numbers, and
-              underscores only.
+          {error && (
+            <div className="error-box">
+              {error}
             </div>
-          </div>
+          )}
 
-          {/* DATE OF BIRTH */}
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label">
+                Student Name
+              </label>
 
-          <div
-            style={{
-              marginBottom: '20px',
-            }}
-          >
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 'bold',
-              }}
-            >
-              Date of Birth
-            </label>
+              <input
+                className="form-input"
+                type="text"
+                value={displayName}
+                onChange={(event) =>
+                  setDisplayName(
+                    event.target.value
+                  )
+                }
+                placeholder="e.g. Jonathan"
+                disabled={loading}
+              />
+            </div>
 
-            <input
-              type="date"
-              value={dateOfBirth}
-              onChange={(event) =>
-                setDateOfBirth(
-                  event.target.value
-                )
-              }
-              disabled={loading}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px',
-                border:
-                  '1px solid #ccc',
-                borderRadius: '6px',
-              }}
-            />
-          </div>
+            <div className="form-group">
+              <label className="form-label">
+                Username
+              </label>
 
-          {/* JOIN DATE */}
+              <input
+                className="form-input"
+                type="text"
+                value={username}
+                onChange={(event) =>
+                  setUsername(
+                    event.target.value
+                  )
+                }
+                placeholder="e.g. jonathan123"
+                disabled={loading}
+                autoComplete="off"
+              />
 
-          <div
-            style={{
-              marginBottom: '20px',
-            }}
-          >
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 'bold',
-              }}
-            >
-              Join Date
-            </label>
+              <div className="form-help">
+                Letters, numbers, and
+                underscores only.
+              </div>
+            </div>
 
-            <input
-              type="date"
-              value={joinDate}
-              onChange={(event) =>
-                setJoinDate(
-                  event.target.value
-                )
-              }
-              disabled={loading}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px',
-                border:
-                  '1px solid #ccc',
-                borderRadius: '6px',
-              }}
-            />
-          </div>
+            <div className="form-group">
+              <label className="form-label">
+                Date of Birth
+              </label>
 
-          {/* LEVEL */}
+              <input
+                className="form-input"
+                type="date"
+                value={dateOfBirth}
+                onChange={(event) =>
+                  setDateOfBirth(
+                    event.target.value
+                  )
+                }
+                disabled={loading}
+              />
+            </div>
 
-          <div
-            style={{
-              marginBottom: '20px',
-            }}
-          >
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 'bold',
-              }}
-            >
-              Level
-            </label>
+            <div className="form-group">
+              <label className="form-label">
+                Join Date
+              </label>
 
-            <select
-              value={level}
-              onChange={(event) =>
-                setLevel(event.target.value)
-              }
-              disabled={loading}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px',
-                border: '1px solid #ccc',
-                borderRadius: '6px',
-                background: '#fff',
-              }}
-            >
-              {STUDENT_LEVELS.map((item) => (
-                <option
-                  key={item.value}
-                  value={item.value}
-                >
-                  {item.label}
+              <input
+                className="form-input"
+                type="date"
+                value={joinDate}
+                onChange={(event) =>
+                  setJoinDate(
+                    event.target.value
+                  )
+                }
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Level
+              </label>
+
+              <select
+                className="form-select"
+                value={level}
+                onChange={(event) =>
+                  setLevel(
+                    event.target.value
+                  )
+                }
+                disabled={loading}
+              >
+                {STUDENT_LEVELS.map(
+                  (item) => (
+                    <option
+                      key={item.value}
+                      value={item.value}
+                    >
+                      {item.label}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Status
+              </label>
+
+              <select
+                className="form-select"
+                value={status}
+                onChange={(event) =>
+                  setStatus(
+                    event.target.value
+                  )
+                }
+                disabled={loading}
+              >
+                <option value="active">
+                  Active
                 </option>
-              ))}
-            </select>
-          </div>
 
-          {/* STATUS */}
+                <option value="inactive">
+                  Inactive
+                </option>
+              </select>
+            </div>
 
-          <div
-            style={{
-              marginBottom: '28px',
-            }}
-          >
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 'bold',
-              }}
-            >
-              Status
-            </label>
-
-            <select
-              value={status}
-              onChange={(event) =>
-                setStatus(
-                  event.target.value
-                )
-              }
+            <button
+              className="btn btn-primary form-submit"
+              type="submit"
               disabled={loading}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px',
-                border:
-                  '1px solid #ccc',
-                borderRadius: '6px',
-                background: '#fff',
-              }}
             >
-              <option value="active">
-                Active
-              </option>
-
-              <option value="inactive">
-                Inactive
-              </option>
-            </select>
-          </div>
-
-          {/* SUBMIT */}
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: 'none',
-              borderRadius: '6px',
-              background: loading
-                ? '#999'
-                : '#111',
-              color: '#fff',
-              cursor: loading
-                ? 'default'
-                : 'pointer',
-              fontSize: '16px',
-            }}
-          >
-            {loading
-              ? 'Creating Student...'
-              : 'Create Student'}
-          </button>
-        </form>
-      </div>
+              {loading
+                ? 'Creating Student...'
+                : 'Create Student'}
+            </button>
+          </form>
+        </div>
+      </main>
     </div>
   )
 }
