@@ -13,6 +13,7 @@ function App() {
     parents: 0,
   })
 
+  const [students, setStudents] = useState([])
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -135,6 +136,37 @@ function App() {
           parentsResult.data?.length || 0,
       })
 
+      /* =========================
+         STUDENTS LIST
+      ========================= */
+
+      const {
+        data: studentsData,
+        error: studentsError,
+      } = await supabase
+        .from('students')
+        .select(`
+          id,
+          date_of_birth,
+          join_date,
+          status,
+          level,
+          profiles (
+            display_name
+          )
+        `)
+        .order('join_date', {
+          ascending: true,
+        })
+
+      if (studentsError) {
+        setError(studentsError.message)
+        setLoading(false)
+        return
+      }
+
+      setStudents(studentsData || [])
+
       setLoading(false)
     }
 
@@ -248,6 +280,10 @@ function App() {
           padding: '40px 24px',
         }}
       >
+        {/* =========================
+            WELCOME
+        ========================= */}
+
         <div
           style={{
             marginBottom: '32px',
@@ -287,6 +323,7 @@ function App() {
             gridTemplateColumns:
               'repeat(auto-fit, minmax(220px, 1fr))',
             gap: '20px',
+            marginBottom: '40px',
           }}
         >
           <div
@@ -373,6 +410,198 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* =========================
+            STUDENTS
+        ========================= */}
+
+        <section>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '20px',
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: '26px',
+                }}
+              >
+                Students
+              </h2>
+
+              <p
+                style={{
+                  margin: '6px 0 0',
+                  color: '#666',
+                }}
+              >
+                Manage Academy students
+              </p>
+            </div>
+
+            <button
+              style={{
+                background: '#111',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '12px 18px',
+                fontWeight: '700',
+                cursor: 'pointer',
+              }}
+            >
+              + Add Student
+            </button>
+          </div>
+
+          <div
+            style={{
+              background: 'white',
+              border: '1px solid #e0e0dc',
+              borderRadius: '16px',
+              overflow: 'hidden',
+            }}
+          >
+            {students.length === 0 ? (
+              <div
+                style={{
+                  padding: '40px',
+                  textAlign: 'center',
+                  color: '#666',
+                }}
+              >
+                No students found.
+              </div>
+            ) : (
+              <div
+                style={{
+                  overflowX: 'auto',
+                }}
+              >
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                  }}
+                >
+                  <thead>
+                    <tr
+                      style={{
+                        background: '#f7f7f4',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <th
+                        style={{
+                          padding: '16px 20px',
+                          fontSize: '13px',
+                          color: '#666',
+                          fontWeight: '700',
+                        }}
+                      >
+                        Name
+                      </th>
+
+                      <th
+                        style={{
+                          padding: '16px 20px',
+                          fontSize: '13px',
+                          color: '#666',
+                          fontWeight: '700',
+                        }}
+                      >
+                        Level
+                      </th>
+
+                      <th
+                        style={{
+                          padding: '16px 20px',
+                          fontSize: '13px',
+                          color: '#666',
+                          fontWeight: '700',
+                        }}
+                      >
+                        Status
+                      </th>
+
+                      <th
+                        style={{
+                          padding: '16px 20px',
+                          fontSize: '13px',
+                          color: '#666',
+                          fontWeight: '700',
+                        }}
+                      >
+                        Joined
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {students.map((student) => (
+                      <tr
+                        key={student.id}
+                        style={{
+                          borderTop:
+                            '1px solid #eeeeea',
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: '18px 20px',
+                            fontWeight: '700',
+                          }}
+                        >
+                          {student.profiles
+                            ?.display_name ||
+                            'Unnamed Student'}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: '18px 20px',
+                            color: '#555',
+                          }}
+                        >
+                          {student.level || '—'}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: '18px 20px',
+                            color: '#555',
+                          }}
+                        >
+                          {student.status || '—'}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: '18px 20px',
+                            color: '#555',
+                          }}
+                        >
+                          {student.join_date
+                            ? new Date(
+                                student.join_date
+                              ).toLocaleDateString(
+                                'en-GB'
+                              )
+                            : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   )
