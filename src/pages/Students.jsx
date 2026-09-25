@@ -176,6 +176,9 @@ function Students() {
           </div>
 
           <button
+             onClick={() => {
+    window.location.href = '/students/add'
+  }}
             style={{
               background: '#111',
               color: 'white',
