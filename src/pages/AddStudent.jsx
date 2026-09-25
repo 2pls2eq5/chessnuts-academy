@@ -42,6 +42,34 @@ function AddStudent({ user, profile }) {
     setLoading(true)
 
     try {
+      // --------------------------------------------------
+      // Get current login session
+      // --------------------------------------------------
+
+      const {
+        data: sessionData,
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        throw new Error(
+          sessionError.message
+        )
+      }
+
+      const accessToken =
+        sessionData?.session?.access_token
+
+      if (!accessToken) {
+        throw new Error(
+          'No login session found. Please log in again.'
+        )
+      }
+
+      // --------------------------------------------------
+      // Call Edge Function
+      // --------------------------------------------------
+
       const {
         data,
         error: functionError,
@@ -58,8 +86,17 @@ function AddStudent({ user, profile }) {
             level,
             status,
           },
+
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
         }
       )
+
+      // --------------------------------------------------
+      // Handle Edge Function error
+      // --------------------------------------------------
 
       if (functionError) {
         console.error(
@@ -104,12 +141,20 @@ function AddStudent({ user, profile }) {
         throw new Error(message)
       }
 
+      // --------------------------------------------------
+      // Validate success response
+      // --------------------------------------------------
+
       if (!data?.success) {
         throw new Error(
           data?.error ||
             'Failed to create student.'
         )
       }
+
+      // --------------------------------------------------
+      // Student successfully created
+      // --------------------------------------------------
 
       setCreatedStudent(data)
     } catch (err) {
@@ -134,7 +179,7 @@ function AddStudent({ user, profile }) {
     }
 
     const text = [
-      `Chessnuts Student Account`,
+      'Chessnuts Student Account',
       `Name: ${createdStudent.display_name}`,
       `Username: ${createdStudent.username}`,
       `Initial Password: ${createdStudent.initial_password}`,
@@ -152,6 +197,10 @@ function AddStudent({ user, profile }) {
       console.error(err)
     }
   }
+
+  // ==================================================
+  // SUCCESS SCREEN
+  // ==================================================
 
   if (createdStudent) {
     return (
@@ -267,6 +316,7 @@ function AddStudent({ user, profile }) {
               display: 'flex',
               gap: '12px',
               marginTop: '24px',
+              flexWrap: 'wrap',
             }}
           >
             <button
@@ -321,6 +371,10 @@ function AddStudent({ user, profile }) {
       </div>
     )
   }
+
+  // ==================================================
+  // ADD STUDENT FORM
+  // ==================================================
 
   return (
     <div
@@ -395,6 +449,8 @@ function AddStudent({ user, profile }) {
             marginTop: '24px',
           }}
         >
+          {/* STUDENT NAME */}
+
           <div
             style={{
               marginBottom: '20px',
@@ -430,6 +486,8 @@ function AddStudent({ user, profile }) {
               }}
             />
           </div>
+
+          {/* USERNAME */}
 
           <div
             style={{
@@ -479,6 +537,8 @@ function AddStudent({ user, profile }) {
             </div>
           </div>
 
+          {/* DATE OF BIRTH */}
+
           <div
             style={{
               marginBottom: '20px',
@@ -514,6 +574,8 @@ function AddStudent({ user, profile }) {
             />
           </div>
 
+          {/* JOIN DATE */}
+
           <div
             style={{
               marginBottom: '20px',
@@ -548,6 +610,8 @@ function AddStudent({ user, profile }) {
               }}
             />
           </div>
+
+          {/* LEVEL */}
 
           <div
             style={{
@@ -596,6 +660,8 @@ function AddStudent({ user, profile }) {
             </select>
           </div>
 
+          {/* STATUS */}
+
           <div
             style={{
               marginBottom: '28px',
@@ -638,6 +704,8 @@ function AddStudent({ user, profile }) {
               </option>
             </select>
           </div>
+
+          {/* SUBMIT */}
 
           <button
             type="submit"
