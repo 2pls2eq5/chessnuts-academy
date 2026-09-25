@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import AcademyHeader from '../components/AcademyHeader'
 
 function Dashboard({ user, profile }) {
   const [loading, setLoading] = useState(true)
@@ -17,33 +18,17 @@ function Dashboard({ user, profile }) {
       setLoading(true)
       setError('')
 
-      /* =========================
-         STUDENTS
-      ========================= */
-
       const studentsResult = await supabase
         .from('students')
         .select('id')
-
-      /* =========================
-         COACHES
-      ========================= */
 
       const coachesResult = await supabase
         .from('coaches')
         .select('id')
 
-      /* =========================
-         PARENTS
-      ========================= */
-
       const parentsResult = await supabase
         .from('parents')
         .select('id')
-
-      /* =========================
-         ERRORS
-      ========================= */
 
       if (studentsResult.error) {
         setError(studentsResult.error.message)
@@ -63,17 +48,11 @@ function Dashboard({ user, profile }) {
         return
       }
 
-      /* =========================
-         STATS
-      ========================= */
-
       setStats({
         students:
           studentsResult.data?.length || 0,
-
         coaches:
           coachesResult.data?.length || 0,
-
         parents:
           parentsResult.data?.length || 0,
       })
@@ -84,268 +63,92 @@ function Dashboard({ user, profile }) {
     loadStats()
   }, [])
 
-  /* =========================
-     LOADING
-  ========================= */
-
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'Arial, sans-serif',
-        }}
-      >
-        Loading dashboard...
+      <div className="academy-app">
+        <AcademyHeader />
+
+        <div className="page-state">
+          Loading dashboard...
+        </div>
       </div>
     )
   }
-
-  /* =========================
-     ERROR
-  ========================= */
 
   if (error) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          padding: '40px',
-          fontFamily: 'Arial, sans-serif',
-        }}
-      >
+      <div className="error-page">
         <h1>Chessnuts Academy</h1>
-
-        <p
-          style={{
-            color: '#b00020',
-          }}
-        >
-          {error}
-        </p>
+        <p>{error}</p>
       </div>
     )
   }
 
-  /* =========================
-     DASHBOARD
-  ========================= */
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#f7f7f4',
-        fontFamily: 'Arial, sans-serif',
-      }}
-    >
-      {/* =========================
-          HEADER
-      ========================= */}
+    <div className="academy-app">
+      <AcademyHeader />
 
-      <header
-        style={{
-          background: '#111',
-          color: 'white',
-          padding: '20px 40px',
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: '24px',
-          }}
-        >
-          Chessnuts Academy
-        </h1>
-      </header>
+      <main className="academy-main">
+        <div className="dashboard-welcome">
+          <div className="page-header-copy">
+            <h1>Admin Dashboard</h1>
 
-      <main
-        style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '40px 24px',
-        }}
-      >
-        {/* =========================
-            WELCOME
-        ========================= */}
-
-        <div
-          style={{
-            marginBottom: '32px',
-          }}
-        >
-          <h2
-            style={{
-              margin: '0 0 8px',
-              fontSize: '32px',
-            }}
-          >
-            Admin Dashboard
-          </h2>
-
-          <p
-            style={{
-              margin: 0,
-              color: '#555',
-              fontSize: '16px',
-            }}
-          >
-            Welcome back,{' '}
-            <strong>
-              {profile?.display_name ||
-                user?.email}
-            </strong>
-          </p>
+            <div className="page-header-welcome">
+              Welcome back,{' '}
+              <strong>
+                {profile?.display_name ||
+                  user?.email}
+              </strong>
+            </div>
+          </div>
         </div>
 
-        {/* =========================
-            STATISTICS
-        ========================= */}
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '20px',
-            marginBottom: '40px',
-          }}
-        >
-          {/* STUDENTS */}
-
-          <div
-            style={{
-              background: 'white',
-              border: '1px solid #e0e0dc',
-              borderRadius: '16px',
-              padding: '28px',
-            }}
-          >
-            <div
-              style={{
-                color: '#666',
-                fontSize: '14px',
-                marginBottom: '10px',
-              }}
-            >
+        <div className="dashboard-stats">
+          <div className="stat-card">
+            <div className="stat-label">
               Students
             </div>
 
-            <div
-              style={{
-                fontSize: '40px',
-                fontWeight: '800',
-              }}
-            >
+            <div className="stat-value">
               {stats.students}
             </div>
           </div>
 
-          {/* COACHES */}
-
-          <div
-            style={{
-              background: 'white',
-              border: '1px solid #e0e0dc',
-              borderRadius: '16px',
-              padding: '28px',
-            }}
-          >
-            <div
-              style={{
-                color: '#666',
-                fontSize: '14px',
-                marginBottom: '10px',
-              }}
-            >
+          <div className="stat-card">
+            <div className="stat-label">
               Coaches
             </div>
 
-            <div
-              style={{
-                fontSize: '40px',
-                fontWeight: '800',
-              }}
-            >
+            <div className="stat-value">
               {stats.coaches}
             </div>
           </div>
 
-          {/* PARENTS */}
-
-          <div
-            style={{
-              background: 'white',
-              border: '1px solid #e0e0dc',
-              borderRadius: '16px',
-              padding: '28px',
-            }}
-          >
-            <div
-              style={{
-                color: '#666',
-                fontSize: '14px',
-                marginBottom: '10px',
-              }}
-            >
+          <div className="stat-card">
+            <div className="stat-label">
               Parents
             </div>
 
-            <div
-              style={{
-                fontSize: '40px',
-                fontWeight: '800',
-              }}
-            >
+            <div className="stat-value">
               {stats.parents}
             </div>
           </div>
         </div>
 
-        {/* =========================
-            QUICK ACTIONS
-        ========================= */}
-
-        <section>
-          <h2
-            style={{
-              margin: '0 0 20px',
-              fontSize: '24px',
-            }}
-          >
+        <section className="quick-actions">
+          <h2 className="section-title">
             Quick Actions
           </h2>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: '12px',
-              flexWrap: 'wrap',
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              window.location.href =
+                '/students'
             }}
           >
-            <button
-              onClick={() => {
-                window.location.href =
-                  '/students'
-              }}
-              style={{
-                background: '#111',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                padding: '12px 18px',
-                fontWeight: '700',
-                cursor: 'pointer',
-              }}
-            >
-              View Students
-            </button>
-          </div>
+            View Students
+          </button>
         </section>
       </main>
     </div>
