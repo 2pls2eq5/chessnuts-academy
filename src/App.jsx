@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
 import StudentDetail from './pages/StudentDetail'
+import AddStudent from './pages/AddStudent'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -166,6 +167,15 @@ function App() {
   const path =
     window.location.pathname
 
+  if (path === '/students/add') {
+  return (
+    <AddStudent
+      user={user}
+      profile={profile}
+    />
+  )
+}
+  
   if (path === '/students') {
     return (
       <Students
