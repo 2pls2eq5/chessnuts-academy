@@ -7,39 +7,18 @@ function App() {
 
   useEffect(() => {
     async function initAuth() {
-      const params = new URLSearchParams(
-        window.location.search
-      )
-
-      const code = params.get('code')
-
-      if (code) {
-        const { error } =
-          await supabase.auth.exchangeCodeForSession(
-            code
-          )
-
-        if (error) {
-          console.error(error)
-          window.location.href =
-            'https://chessnuts.fun/login'
-          return
-        }
-
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname
-        )
-      }
-
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
       if (!user) {
+        const returnTo = encodeURIComponent(
+          window.location.href
+        )
+
         window.location.href =
-          'https://chessnuts.fun/login'
+          `https://chessnuts.fun/login?returnTo=${returnTo}`
+
         return
       }
 
