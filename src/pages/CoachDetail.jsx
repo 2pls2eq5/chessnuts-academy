@@ -461,73 +461,59 @@ function CoachDetail({ coachId }) {
               </div>
             </section>
 
-            <section
-              className="card detail-card"
-              style={{
-                marginTop: '32px',
-              }}
-            >
-              <div className="detail-card-header">
-                <h2 className="detail-card-title">
-                  Students
-                </h2>
-              </div>
+<section
+  className="card detail-card"
+  style={{
+    marginTop: '32px',
+  }}
+>
+  <div className="detail-card-header">
+    <h2 className="detail-card-title">
+      Students
+    </h2>
+  </div>
 
-              {students.length === 0 ? (
-                <div className="empty-state">
-                  No students assigned.
-                </div>
-              ) : (
-                <div className="detail-grid">
-                  {students.map((student) => (
-                    <div
-                      key={student.id}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '18px',
-                      }}
-                    >
-                      <div>
-                        <div className="detail-label">
-                          Student
-                        </div>
+  {students.length === 0 ? (
+    <div className="empty-state">
+      No students assigned.
+    </div>
+  ) : (
+    <div className="table-scroll">
+      <table className="students-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Level</th>
+            <th>Status</th>
+          </tr>
+        </thead>
 
-                        <div className="detail-value detail-value-strong">
-                          {
-                            student.profiles
-                              ?.display_name ||
-                            'Unnamed Student'
-                          }
-                        </div>
-                      </div>
+        <tbody>
+          {students.map((student) => (
+            <tr key={student.id}>
+              <td>
+                <span className="table-name">
+                  {student.profiles?.display_name ||
+                    'Unnamed Student'}
+                </span>
+              </td>
 
-                      <div>
-                        <div className="detail-label">
-                          Level
-                        </div>
+              <td>
+                {getStudentLevelLabel(
+                  student.level
+                )}
+              </td>
 
-                        <div className="detail-value">
-                          {getStudentLevelLabel(
-                            student.level
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="detail-label">
-                          Status
-                        </div>
-
-                        <div className="detail-value">
-                          {student.status || '—'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+              <td>
+                {student.status || '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
           </>
         ) : (
           <form
