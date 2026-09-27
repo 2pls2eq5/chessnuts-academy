@@ -152,7 +152,7 @@ function Schedule() {
             <h1>Schedules</h1>
 
             <p>
-              Manage and view the Academy teaching schedule
+              Manage and view the Academy teaching schedules
             </p>
           </div>
         </div>
