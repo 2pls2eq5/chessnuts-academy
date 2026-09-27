@@ -285,17 +285,6 @@
   letter-spacing: -1px;
 }
 
-.quick-actions {
-  margin-top: 8px;
-}
-
-.section-title {
-  margin: 0 0 16px;
-  color: var(--text);
-  font-size: 18px;
-  font-weight: 750;
-}
-
 /* =========================================================
    CARD
 ========================================================= */
