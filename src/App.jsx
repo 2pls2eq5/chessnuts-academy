@@ -15,6 +15,8 @@ import Parents from './pages/Parents'
 import ParentDetail from './pages/ParentDetail'
 import AddParent from './pages/AddParent'
 
+import Availability from './pages/Availability'
+
 function App() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
