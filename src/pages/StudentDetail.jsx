@@ -789,6 +789,7 @@ function StudentDetail({ studentId }) {
                 gridTemplateColumns:
                   'repeat(2, minmax(0, 1fr))',
                 gap: '24px',
+                marginTop: '24px',
               }}
             >
               <section className="card detail-card">
