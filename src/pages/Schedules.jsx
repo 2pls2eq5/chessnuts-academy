@@ -12,7 +12,7 @@ const DAYS = [
   'Saturday',
 ]
 
-function Schedule() {
+function Schedules() {
   const [loading, setLoading] = useState(true)
   const [schedules, setSchedules] = useState([])
   const [requestCount, setRequestCount] = useState(0)
@@ -20,17 +20,26 @@ function Schedule() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    async function loadScheduleOverview() {
+    async function loadSchedulesOverview() {
       setLoading(true)
       setError('')
 
       const [
-        { data: scheduleData, error: scheduleError },
-        { count: requestCountData, error: requestError },
-        { count: availabilityCountData, error: availabilityError },
+        {
+          data: schedulesData,
+          error: schedulesError,
+        },
+        {
+          count: requestCountData,
+          error: requestError,
+        },
+        {
+          count: availabilityCountData,
+          error: availabilityError,
+        },
       ] = await Promise.all([
         supabase
-          .from('student_s')
+          .from('student_schedules')
           .select(`
             id,
             student_id,
@@ -51,11 +60,15 @@ function Schedule() {
               )
             )
           `)
-          .order('day_of_week', { ascending: true })
-          .order('start_time', { ascending: true }),
+          .order('day_of_week', {
+            ascending: true,
+          })
+          .order('start_time', {
+            ascending: true,
+          }),
 
         supabase
-          .from('student__requests')
+          .from('student_schedule_requests')
           .select('id', {
             count: 'exact',
             head: true,
@@ -71,8 +84,8 @@ function Schedule() {
           .eq('status', 'active'),
       ])
 
-      if (Error) {
-        setError(Error.message)
+      if (schedulesError) {
+        setError(schedulesError.message)
         setLoading(false)
         return
       }
@@ -89,26 +102,28 @@ function Schedule() {
         return
       }
 
-      sets(Data || [])
+      setSchedules(schedulesData || [])
       setRequestCount(requestCountData || 0)
-      setAvailabilityCount(availabilityCountData || 0)
+      setAvailabilityCount(
+        availabilityCountData || 0
+      )
 
       setLoading(false)
     }
 
-    loadScheduleOverview()
+    loadSchedulesOverview()
   }, [])
 
-  function getStudentName(schedule) {
+  function getStudentName(scheduleItem) {
     return (
-      schedule.students?.profiles?.display_name ||
+      scheduleItem.students?.profiles?.display_name ||
       'Unnamed Student'
     )
   }
 
-  function getCoachName(schedule) {
+  function getCoachName(scheduleItem) {
     return (
-      schedule.coaches?.profiles?.display_name ||
+      scheduleItem.coaches?.profiles?.display_name ||
       'Unnamed Coach'
     )
   }
@@ -127,7 +142,7 @@ function Schedule() {
         <AcademyHeader />
 
         <div className="page-state">
-          Loading schedule...
+          Loading schedules...
         </div>
       </div>
     )
@@ -152,7 +167,8 @@ function Schedule() {
             <h1>Schedules</h1>
 
             <p>
-              Manage and view the Academy teaching schedules
+              Manage and view the Academy teaching
+              schedules
             </p>
           </div>
         </div>
@@ -197,30 +213,34 @@ function Schedule() {
                 </thead>
 
                 <tbody>
-                  {schedules.map((schedule) => (
-                    <tr key={schedule.id}>
+                  {schedules.map((scheduleItem) => (
+                    <tr key={scheduleItem.id}>
                       <td>
                         {getDayLabel(
-                          schedule.day_of_week
+                          scheduleItem.day_of_week
                         )}
                       </td>
 
                       <td>
-                        {formatTime(schedule.start_time)}
+                        {formatTime(
+                          scheduleItem.start_time
+                        )}
                         {'–'}
-                        {formatTime(schedule.end_time)}
+                        {formatTime(
+                          scheduleItem.end_time
+                        )}
                       </td>
 
                       <td>
-                        {getStudentName(schedule)}
+                        {getStudentName(scheduleItem)}
                       </td>
 
                       <td>
-                        {getCoachName(schedule)}
+                        {getCoachName(scheduleItem)}
                       </td>
 
                       <td>
-                        {schedule.timezone}
+                        {scheduleItem.timezone}
                       </td>
                     </tr>
                   ))}
@@ -312,7 +332,7 @@ function Schedule() {
                 className="btn btn-primary"
                 onClick={() => {
                   window.location.href =
-                    '/schedule/requests'
+                    '/schedules/requests'
                 }}
               >
                 View Requests
@@ -325,4 +345,4 @@ function Schedule() {
   )
 }
 
-export default Schedule
+export default Schedules
