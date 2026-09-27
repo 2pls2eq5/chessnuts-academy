@@ -379,72 +379,59 @@ function ParentDetail({ parentId }) {
               </div>
             </section>
 
-            <section
-              className="card detail-card"
-              style={{
-                marginTop: '32px',
-              }}
-            >
-              <div className="detail-card-header">
-                <h2 className="detail-card-title">
-                  Children
-                </h2>
-              </div>
+  <section
+  className="card detail-card"
+  style={{
+    marginTop: '32px',
+  }}
+>
+  <div className="detail-card-header">
+    <h2 className="detail-card-title">
+      Children
+    </h2>
+  </div>
 
-              {children.length === 0 ? (
-                <div className="empty-state">
-                  No children assigned.
-                </div>
-              ) : (
-                <div className="detail-grid">
-                  {children.map((child) => (
-                    <div
-                      key={child.id}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '18px',
-                      }}
-                    >
-                      <div>
-                        <div className="detail-label">
-                          Student
-                        </div>
+  {children.length === 0 ? (
+    <div className="empty-state">
+      No children assigned.
+    </div>
+  ) : (
+    <div className="table-scroll">
+      <table className="students-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Level</th>
+            <th>Status</th>
+          </tr>
+        </thead>
 
-                        <div className="detail-value detail-value-strong">
-                          {child.profiles
-                            ?.display_name ||
-                            'Unnamed Student'}
-                        </div>
-                      </div>
+        <tbody>
+          {children.map((child) => (
+            <tr key={child.id}>
+              <td>
+                <span className="table-name">
+                  {child.profiles?.display_name ||
+                    'Unnamed Student'}
+                </span>
+              </td>
 
-                      <div>
-                        <div className="detail-label">
-                          Level
-                        </div>
+              <td>
+                {getStudentLevelLabel(
+                  child.level
+                )}
+              </td>
 
-                        <div className="detail-value">
-                          {getStudentLevelLabel(
-                            child.level
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="detail-label">
-                          Status
-                        </div>
-
-                        <div className="detail-value">
-                          {child.status ||
-                            '—'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+              <td>
+                {child.status || '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
           </>
         ) : (
           <form
