@@ -15,6 +15,7 @@ import Parents from './pages/Parents'
 import ParentDetail from './pages/ParentDetail'
 import AddParent from './pages/AddParent'
 
+import Schedule from './pages/Schedule'
 import Availability from './pages/Availability'
 
 function App() {
@@ -176,8 +177,7 @@ function App() {
      ROUTING
   ========================= */
 
-  const path =
-    window.location.pathname
+  const path = window.location.pathname
 
   /* =========================
      STUDENTS
@@ -201,11 +201,8 @@ function App() {
     )
   }
 
-  if (
-    path.startsWith('/students/')
-  ) {
-    const studentId =
-      path.split('/')[2]
+  if (path.startsWith('/students/')) {
+    const studentId = path.split('/')[2]
 
     return (
       <StudentDetail
@@ -238,11 +235,8 @@ function App() {
     )
   }
 
-  if (
-    path.startsWith('/coaches/')
-  ) {
-    const coachId =
-      path.split('/')[2]
+  if (path.startsWith('/coaches/')) {
+    const coachId = path.split('/')[2]
 
     return (
       <CoachDetail
@@ -266,11 +260,8 @@ function App() {
     )
   }
 
-  if (
-    path.startsWith('/parents/')
-  ) {
-    const parentId =
-      path.split('/')[2]
+  if (path.startsWith('/parents/')) {
+    const parentId = path.split('/')[2]
 
     return (
       <ParentDetail
@@ -293,15 +284,24 @@ function App() {
   /* =========================
      SCHEDULE
   ========================= */
-  
+
+  if (path === '/schedule') {
+    return (
+      <Schedule
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
   if (path === '/schedule/availability') {
-  return (
-    <Availability
-      user={user}
-      profile={profile}
-    />
-  )
-}
+    return (
+      <Availability
+        user={user}
+        profile={profile}
+      />
+    )
+  }
 
   /* =========================
      DASHBOARD
