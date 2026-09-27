@@ -969,9 +969,22 @@ function StudentDetail({ studentId }) {
                     No parents assigned.
                   </div>
                 ) : (
-                  <div className="detail-grid">
-                    {parents.map((parent) => (
-                      <div key={parent.id}>
+                  <div
+  className="detail-grid"
+  style={{
+    gap: '24px',
+    rowGap: '28px',
+  }}
+>
+  {parents.map((parent) => (
+    <div
+      key={parent.id}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '7px',
+      }}
+    >
                         <div className="detail-label">
                           Parent
                         </div>
