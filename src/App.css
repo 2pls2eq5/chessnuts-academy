@@ -457,11 +457,23 @@
   padding: 28px;
 }
 
+.detail-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
 .detail-card-title {
   margin: 0 0 24px;
   color: var(--text);
   font-size: 17px;
   font-weight: 750;
+}
+
+.detail-card-header .detail-card-title {
+  margin-bottom: 0;
 }
 
 .detail-grid {
@@ -490,7 +502,7 @@
 }
 
 /* =========================================================
-   ADD STUDENT
+   FORMS
 ========================================================= */
 
 .form-card {
@@ -572,6 +584,17 @@
   background: #9aa19b;
   cursor: default;
   transform: none;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.form-actions .btn {
+  min-width: 120px;
 }
 
 /* =========================================================
@@ -807,6 +830,23 @@
   .success-card {
     padding: 20px;
     border-radius: var(--radius-md);
+  }
+
+  .detail-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .detail-card-header .btn {
+    width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
   }
 
   .success-actions {
