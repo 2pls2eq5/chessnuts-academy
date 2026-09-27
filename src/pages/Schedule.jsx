@@ -125,6 +125,7 @@ function Schedule() {
     return (
       <div className="academy-app">
         <AcademyHeader />
+
         <div className="page-state">
           Loading schedule...
         </div>
@@ -149,6 +150,7 @@ function Schedule() {
         <div className="page-header">
           <div className="page-header-copy">
             <h1>Schedule</h1>
+
             <p>
               Manage and view the Academy teaching schedule
             </p>
@@ -165,6 +167,7 @@ function Schedule() {
             }}
           >
             <h2>Upcoming Schedules</h2>
+
             <p>
               Approved recurring student schedules
             </p>
@@ -236,6 +239,7 @@ function Schedule() {
             marginTop: '24px',
           }}
         >
+          {/* Coach Availability */}
           <div
             className="card"
             style={{
@@ -257,7 +261,12 @@ function Schedule() {
               active availability ranges
             </p>
 
-            <div className="form-actions">
+            <div
+              className="form-actions"
+              style={{
+                justifyContent: 'center',
+              }}
+            >
               <button
                 className="btn btn-primary"
                 onClick={() => {
@@ -270,6 +279,7 @@ function Schedule() {
             </div>
           </div>
 
+          {/* Student Requests */}
           <div
             className="card"
             style={{
@@ -291,7 +301,12 @@ function Schedule() {
               pending requests
             </p>
 
-            <div className="form-actions">
+            <div
+              className="form-actions"
+              style={{
+                justifyContent: 'center',
+              }}
+            >
               <button
                 className="btn btn-primary"
                 onClick={() => {
