@@ -272,7 +272,7 @@ function Schedule() {
                 className="btn btn-primary"
                 onClick={() => {
                   window.location.href =
-                    '/schedule/availability'
+                    '/schedules/availability'
                 }}
               >
                 Manage Availability
