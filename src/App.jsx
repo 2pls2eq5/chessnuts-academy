@@ -291,6 +291,19 @@ function App() {
   }
 
   /* =========================
+     SCHEDULE
+  ========================= */
+  
+  if (path === '/schedule/availability') {
+  return (
+    <Availability
+      user={user}
+      profile={profile}
+    />
+  )
+}
+
+  /* =========================
      DASHBOARD
   ========================= */
 
