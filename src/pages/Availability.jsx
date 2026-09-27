@@ -349,7 +349,10 @@ function Availability() {
 
   const filteredAvailability = availability.filter((item) => {
     const coachName = getCoachName(item).toLowerCase()
-    const matchesSearch = coachName.includes(search.toLowerCase())
+
+    const matchesSearch = coachName.includes(
+      search.toLowerCase()
+    )
 
     const matchesStatus =
       statusFilter === 'all' ||
@@ -362,7 +365,18 @@ function Availability() {
     return (
       <div className="academy-app">
         <AcademyHeader />
-        <div className="page-state">Loading availability...</div>
+        <div className="page-state">
+          Loading availability...
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !showForm && availability.length === 0) {
+    return (
+      <div className="error-page">
+        <h1>Chessnuts Academy</h1>
+        <p>{error}</p>
       </div>
     )
   }
@@ -388,190 +402,164 @@ function Availability() {
           )}
         </div>
 
-        <div className="schedule-subnav">
-          <button
-            className="schedule-subnav-active"
-            onClick={() => {
-              window.location.href = '/schedule/availability'
-            }}
-          >
-            Availability
-          </button>
-
-          <button
-            className="schedule-subnav-disabled"
-            disabled
-          >
-            Requests
-          </button>
-
-          <button
-            className="schedule-subnav-disabled"
-            disabled
-          >
-            Schedules
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="card schedule-form-card">
+        {showForm ? (
+          <div className="card form-card">
             <div className="form-header">
-              <div>
-                <h2>
-                  {editingAvailability
-                    ? 'Edit Availability'
-                    : 'Add Availability'}
-                </h2>
+              <h2>
+                {editingAvailability
+                  ? 'Edit Availability'
+                  : 'Add Availability'}
+              </h2>
 
-                <p>
-                  Set a recurring weekly time range when a coach is
-                  available for scheduling.
-                </p>
-              </div>
+              <p>
+                Set a recurring weekly time range when a coach
+                is available.
+              </p>
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="schedule-form-grid">
-                <div className="form-group">
-                  <label className="form-label">
-                    Coach
-                  </label>
+              <div className="form-group">
+                <label className="form-label">
+                  Coach
+                </label>
 
-                  <select
-                    className="form-select"
-                    value={form.coachId}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        coachId: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="">
-                      Select coach
+                <select
+                  className="form-select"
+                  value={form.coachId}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      coachId: event.target.value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Select coach
+                  </option>
+
+                  {coaches.map((coach) => (
+                    <option
+                      key={coach.id}
+                      value={coach.id}
+                    >
+                      {coach.profiles?.display_name ||
+                        'Unnamed Coach'}
                     </option>
+                  ))}
+                </select>
+              </div>
 
-                    {coaches.map((coach) => (
-                      <option key={coach.id} value={coach.id}>
-                        {coach.profiles?.display_name ||
-                          'Unnamed Coach'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Day
+                </label>
 
-                <div className="form-group">
-                  <label className="form-label">
-                    Day
-                  </label>
-
-                  <select
-                    className="form-select"
-                    value={form.dayOfWeek}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        dayOfWeek: event.target.value,
-                      })
-                    }
-                  >
-                    {DAYS.map((day) => (
-                      <option
-                        key={day.value}
-                        value={day.value}
-                      >
-                        {day.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    Start Time
-                  </label>
-
-                  <input
-                    className="form-input"
-                    type="time"
-                    value={form.startTime}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        startTime: event.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    End Time
-                  </label>
-
-                  <input
-                    className="form-input"
-                    type="time"
-                    value={form.endTime}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        endTime: event.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    Timezone
-                  </label>
-
-                  <select
-                    className="form-select"
-                    value={form.timezone}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        timezone: event.target.value,
-                      })
-                    }
-                  >
-                    {TIMEZONES.map((timezone) => (
-                      <option
-                        key={timezone}
-                        value={timezone}
-                      >
-                        {timezone}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    Status
-                  </label>
-
-                  <select
-                    className="form-select"
-                    value={form.status}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        status: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="active">
-                      Active
+                <select
+                  className="form-select"
+                  value={form.dayOfWeek}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      dayOfWeek: event.target.value,
+                    })
+                  }
+                >
+                  {DAYS.map((day) => (
+                    <option
+                      key={day.value}
+                      value={day.value}
+                    >
+                      {day.label}
                     </option>
+                  ))}
+                </select>
+              </div>
 
-                    <option value="inactive">
-                      Inactive
+              <div className="form-group">
+                <label className="form-label">
+                  Start Time
+                </label>
+
+                <input
+                  className="form-input"
+                  type="time"
+                  value={form.startTime}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      startTime: event.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  End Time
+                </label>
+
+                <input
+                  className="form-input"
+                  type="time"
+                  value={form.endTime}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      endTime: event.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Timezone
+                </label>
+
+                <select
+                  className="form-select"
+                  value={form.timezone}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      timezone: event.target.value,
+                    })
+                  }
+                >
+                  {TIMEZONES.map((timezone) => (
+                    <option
+                      key={timezone}
+                      value={timezone}
+                    >
+                      {timezone}
                     </option>
-                  </select>
-                </div>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Status
+                </label>
+
+                <select
+                  className="form-select"
+                  value={form.status}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      status: event.target.value,
+                    })
+                  }
+                >
+                  <option value="active">
+                    Active
+                  </option>
+
+                  <option value="inactive">
+                    Inactive
+                  </option>
+                </select>
               </div>
 
               {error && (
@@ -604,9 +592,7 @@ function Availability() {
               </div>
             </form>
           </div>
-        )}
-
-        {!showForm && (
+        ) : (
           <>
             {success && (
               <div className="success-card">
@@ -632,15 +618,23 @@ function Availability() {
               />
 
               <select
-                className="form-select schedule-status-filter"
+                className="form-select"
                 value={statusFilter}
                 onChange={(event) =>
                   setStatusFilter(event.target.value)
                 }
               >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="all">
+                  All statuses
+                </option>
+
+                <option value="active">
+                  Active
+                </option>
+
+                <option value="inactive">
+                  Inactive
+                </option>
               </select>
             </div>
 
@@ -661,7 +655,7 @@ function Availability() {
                         <th>Time</th>
                         <th>Timezone</th>
                         <th>Status</th>
-                        <th></th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
 
@@ -684,11 +678,14 @@ function Availability() {
                             </td>
 
                             <td>
-                              {getDayLabel(item.day_of_week)}
+                              {getDayLabel(
+                                item.day_of_week
+                              )}
                             </td>
 
                             <td>
-                              {item.start_time?.slice(0, 5)}–
+                              {item.start_time?.slice(0, 5)}
+                              {'–'}
                               {item.end_time?.slice(0, 5)}
                             </td>
 
@@ -709,41 +706,43 @@ function Availability() {
                             </td>
 
                             <td>
-                              <div className="schedule-row-actions">
-                                <button
-                                  className="schedule-row-button"
-                                  onClick={() =>
-                                    openEditForm(item)
-                                  }
-                                >
-                                  Edit
-                                </button>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() =>
+                                  openEditForm(item)
+                                }
+                              >
+                                Edit
+                              </button>
 
-                                <button
-                                  className="schedule-row-button"
-                                  onClick={() =>
-                                    handleToggleStatus(item)
-                                  }
-                                >
-                                  {active
-                                    ? 'Deactivate'
-                                    : 'Activate'}
-                                </button>
+                              {' '}
 
-                                <button
-                                  className="schedule-row-button schedule-row-danger"
-                                  onClick={() =>
-                                    handleRemove(item)
-                                  }
-                                  disabled={
-                                    removingId === item.id
-                                  }
-                                >
-                                  {removingId === item.id
-                                    ? 'Removing...'
-                                    : 'Remove'}
-                                </button>
-                              </div>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() =>
+                                  handleToggleStatus(item)
+                                }
+                              >
+                                {active
+                                  ? 'Deactivate'
+                                  : 'Activate'}
+                              </button>
+
+                              {' '}
+
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() =>
+                                  handleRemove(item)
+                                }
+                                disabled={
+                                  removingId === item.id
+                                }
+                              >
+                                {removingId === item.id
+                                  ? 'Removing...'
+                                  : 'Remove'}
+                              </button>
                             </td>
                           </tr>
                         )
