@@ -24,7 +24,7 @@ function AcademyHeader() {
     },
     {
       label: 'Schedule',
-      path: '/schedule/availability',
+      path: '/schedule',
       active: path.startsWith('/schedule'),
     },
     {
