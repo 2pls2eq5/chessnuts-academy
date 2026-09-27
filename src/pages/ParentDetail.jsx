@@ -2,21 +2,15 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import AcademyHeader from '../components/AcademyHeader'
 
-function ParentDetail() {
-  const path = window.location.pathname
-  const parentId = path.split('/')[2]
-
+function ParentDetail({ parentId }) {
   const [loading, setLoading] = useState(true)
   const [parent, setParent] = useState(null)
-
   const [error, setError] = useState('')
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-
   const [saveError, setSaveError] = useState('')
-  const [saveSuccess, setSaveSuccess] =
-    useState(false)
+  const [saveSuccess, setSaveSuccess] = useState('')
 
   const [form, setForm] = useState({
     username: '',
@@ -41,8 +35,8 @@ function ParentDetail() {
           id,
           created_at,
           profiles (
-            username,
             display_name,
+            username,
             phone,
             address,
             gender,
@@ -71,115 +65,58 @@ function ParentDetail() {
 
       setParent(data)
 
-      const profile =
-        data?.profiles || {}
-
       setForm({
         username:
-          profile.username || '',
+          data.profiles?.username || '',
         displayName:
-          profile.display_name || '',
+          data.profiles?.display_name || '',
         phone:
-          profile.phone || '',
+          data.profiles?.phone || '',
         address:
-          profile.address || '',
+          data.profiles?.address || '',
         gender:
-          profile.gender || '',
+          data.profiles?.gender || '',
         dateOfBirth:
-          profile.date_of_birth || '',
+          data.profiles?.date_of_birth || '',
       })
 
       setLoading(false)
     }
 
-    if (parentId) {
-      loadParent()
-    }
+    loadParent()
   }, [parentId])
 
-  function formatDate(date) {
-    if (!date) {
-      return '—'
-    }
-
-    return new Date(date).toLocaleDateString(
-      'en-GB'
-    )
-  }
-
-  function getGenderLabel(gender) {
-    if (!gender) {
-      return '—'
-    }
-
-    return (
-      gender.charAt(0).toUpperCase() +
-      gender.slice(1)
-    )
-  }
-
-  function getLevelLabel(level) {
-    const levels = {
-      BASIC_1: 'Basic I',
-      BASIC_2: 'Basic II',
-      INTERMEDIATE_1:
-        'Intermediate I',
-      INTERMEDIATE_2:
-        'Intermediate II',
-      PRE_ADVANCED:
-        'Pre-Advanced',
-      ADVANCED_1:
-        'Advanced I',
-      ADVANCED_2:
-        'Advanced II',
-      EXPERT_1:
-        'Expert I',
-      EXPERT_2:
-        'Expert II',
-    }
-
-    return levels[level] || level || '—'
-  }
-
-  function handleChange(event) {
-    const {
-      name,
-      value,
-    } = event.target
-
+  function updateField(field, value) {
     setForm((current) => ({
       ...current,
-      [name]: value,
+      [field]: value,
     }))
   }
 
   function startEditing() {
     setSaveError('')
-    setSaveSuccess(false)
+    setSaveSuccess('')
+
+    setForm({
+      username:
+        parent.profiles?.username || '',
+      displayName:
+        parent.profiles?.display_name || '',
+      phone:
+        parent.profiles?.phone || '',
+      address:
+        parent.profiles?.address || '',
+      gender:
+        parent.profiles?.gender || '',
+      dateOfBirth:
+        parent.profiles?.date_of_birth || '',
+    })
+
     setEditing(true)
   }
 
   function cancelEditing() {
-    const profile =
-      parent?.profiles || {}
-
-    setForm({
-      username:
-        profile.username || '',
-      displayName:
-        profile.display_name || '',
-      phone:
-        profile.phone || '',
-      address:
-        profile.address || '',
-      gender:
-        profile.gender || '',
-      dateOfBirth:
-        profile.date_of_birth || '',
-    })
-
     setSaveError('')
-    setSaveSuccess(false)
     setEditing(false)
   }
 
@@ -188,61 +125,23 @@ function ParentDetail() {
 
     setSaving(true)
     setSaveError('')
-    setSaveSuccess(false)
+    setSaveSuccess('')
 
-    const username =
-      form.username.trim()
-
-    const displayName =
-      form.displayName.trim()
-
-    if (!username) {
-      setSaveError(
-        'Username cannot be empty.'
+    const { error } =
+      await supabase.rpc(
+        'admin_update_parent',
+        {
+          p_parent_id: parent.id,
+          p_username: form.username,
+          p_display_name:
+            form.displayName,
+          p_phone: form.phone,
+          p_address: form.address,
+          p_gender: form.gender,
+          p_date_of_birth:
+            form.dateOfBirth || null,
+        }
       )
-      setSaving(false)
-      return
-    }
-
-    if (!displayName) {
-      setSaveError(
-        'Display name cannot be empty.'
-      )
-      setSaving(false)
-      return
-    }
-
-    if (
-      !/^[a-zA-Z0-9_]+$/.test(
-        username
-      )
-    ) {
-      setSaveError(
-        'Username can only contain letters, numbers, and underscores.'
-      )
-      setSaving(false)
-      return
-    }
-
-    const {
-      error,
-    } = await supabase.rpc(
-      'admin_update_parent',
-      {
-        p_parent_id: parentId,
-        p_username: username,
-        p_display_name:
-          displayName,
-        p_phone:
-          form.phone.trim() || null,
-        p_address:
-          form.address.trim() || null,
-        p_gender:
-          form.gender || null,
-        p_date_of_birth:
-          form.dateOfBirth || null,
-      }
-    )
 
     if (error) {
       setSaveError(error.message)
@@ -252,23 +151,34 @@ function ParentDetail() {
 
     setParent((current) => ({
       ...current,
+
       profiles: {
         ...current.profiles,
-        username,
+
+        username:
+          form.username,
+
         display_name:
-          displayName,
+          form.displayName,
+
         phone:
-          form.phone.trim() || null,
+          form.phone || null,
+
         address:
-          form.address.trim() || null,
+          form.address || null,
+
         gender:
           form.gender || null,
+
         date_of_birth:
           form.dateOfBirth || null,
       },
     }))
 
-    setSaveSuccess(true)
+    setSaveSuccess(
+      'Parent profile updated successfully.'
+    )
+
     setEditing(false)
     setSaving(false)
   }
@@ -287,52 +197,50 @@ function ParentDetail() {
 
   if (error) {
     return (
-      <div className="academy-app">
-        <AcademyHeader />
+      <div className="error-page">
+        <h1>Chessnuts Academy</h1>
 
-        <main className="academy-main">
-          <div className="error-page">
-            <h1>
-              Chessnuts Academy
-            </h1>
+        <p>{error}</p>
 
-            <p>{error}</p>
-          </div>
-        </main>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            window.location.href =
+              '/parents'
+          }}
+        >
+          Back to Parents
+        </button>
       </div>
     )
   }
 
   if (!parent) {
-    return (
-      <div className="academy-app">
-        <AcademyHeader />
-
-        <main className="academy-main">
-          <div className="empty-state">
-            Parent not found.
-          </div>
-        </main>
-      </div>
-    )
+    return null
   }
 
-  const profile =
-    parent.profiles || {}
+  const displayName =
+    parent.profiles?.display_name ||
+    'Unnamed Parent'
 
-  const children =
-    parent.parent_students || []
+  const username =
+    parent.profiles?.username || '—'
+
+  const formatDate = (value) => {
+    if (!value) {
+      return '—'
+    }
+
+    return new Date(
+      value
+    ).toLocaleDateString('en-GB')
+  }
 
   return (
     <div className="academy-app">
       <AcademyHeader />
 
       <main className="academy-main">
-
-        {/* =========================
-            BACK
-        ========================= */}
-
         <div className="detail-back">
           <button
             className="btn btn-ghost"
@@ -345,65 +253,45 @@ function ParentDetail() {
           </button>
         </div>
 
-        {/* =========================
-            HEADER
-        ========================= */}
-
         <div className="detail-heading">
-          <div>
-            <h1>
-              {profile.display_name ||
-                'Unnamed Parent'}
-            </h1>
+          <h1>{displayName}</h1>
 
-            <p>
-              Parent Details
-            </p>
-          </div>
-
-          {!editing && (
-            <button
-              className="btn btn-primary"
-              onClick={startEditing}
-            >
-              Edit Parent
-            </button>
-          )}
+          <p>Parent profile</p>
         </div>
-
-        {/* =========================
-            SUCCESS
-        ========================= */}
 
         {saveSuccess && (
           <div className="success-card">
-            Parent information updated
-            successfully.
+            <div className="success-icon">
+              ✓
+            </div>
+
+            <p>{saveSuccess}</p>
           </div>
         )}
 
-        {/* =========================
-            PROFILE VIEW
-        ========================= */}
-
-        {!editing && (
-          <div className="card detail-card">
+        {!editing ? (
+          <section className="card detail-card">
             <div className="detail-card-header">
-              <div className="detail-card-title">
-                Profile
-              </div>
+              <h2 className="detail-card-title">
+                Basic Information
+              </h2>
+
+              <button
+                className="btn btn-primary"
+                onClick={startEditing}
+              >
+                Edit Parent
+              </button>
             </div>
 
             <div className="detail-grid">
-
               <div>
                 <div className="detail-label">
                   Name
                 </div>
 
-                <div className="detail-value-strong">
-                  {profile.display_name ||
-                    '—'}
+                <div className="detail-value detail-value-strong">
+                  {displayName}
                 </div>
               </div>
 
@@ -413,8 +301,7 @@ function ParentDetail() {
                 </div>
 
                 <div className="detail-value">
-                  {profile.username ||
-                    '—'}
+                  {username}
                 </div>
               </div>
 
@@ -424,8 +311,8 @@ function ParentDetail() {
                 </div>
 
                 <div className="detail-value">
-                  {profile.phone ||
-                    '—'}
+                  {parent.profiles
+                    ?.phone || '—'}
                 </div>
               </div>
 
@@ -435,9 +322,19 @@ function ParentDetail() {
                 </div>
 
                 <div className="detail-value">
-                  {getGenderLabel(
-                    profile.gender
-                  )}
+                  {parent.profiles
+                    ?.gender || '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Address
+                </div>
+
+                <div className="detail-value">
+                  {parent.profiles
+                    ?.address || '—'}
                 </div>
               </div>
 
@@ -448,7 +345,8 @@ function ParentDetail() {
 
                 <div className="detail-value">
                   {formatDate(
-                    profile.date_of_birth
+                    parent.profiles
+                      ?.date_of_birth
                   )}
                 </div>
               </div>
@@ -464,183 +362,163 @@ function ParentDetail() {
                   )}
                 </div>
               </div>
-
-              <div>
-                <div className="detail-label">
-                  Address
-                </div>
-
-                <div className="detail-value">
-                  {profile.address ||
-                    '—'}
-                </div>
-              </div>
-
             </div>
-          </div>
-        )}
-
-        {/* =========================
-            EDIT FORM
-        ========================= */}
-
-        {editing && (
+          </section>
+        ) : (
           <form
-            className="form-card"
+            className="card form-card"
             onSubmit={handleSave}
           >
             <div className="form-header">
-              <h2>
-                Edit Parent
-              </h2>
+              <h1>Edit Parent</h1>
+
+              <p>
+                Update this parent's
+                profile information.
+              </p>
             </div>
 
             {saveError && (
-              <div className="error-state">
+              <div className="error-box">
                 {saveError}
               </div>
             )}
 
-            <div className="detail-grid">
+            <div className="form-group">
+              <label className="form-label">
+                Display Name
+              </label>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Name
-                </label>
+              <input
+                className="form-input"
+                type="text"
+                value={
+                  form.displayName
+                }
+                onChange={(event) =>
+                  updateField(
+                    'displayName',
+                    event.target.value
+                  )
+                }
+                required
+              />
+            </div>
 
-                <input
-                  className="form-input"
-                  type="text"
-                  name="displayName"
-                  value={
-                    form.displayName
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
+            <div className="form-group">
+              <label className="form-label">
+                Username
+              </label>
+
+              <input
+                className="form-input"
+                type="text"
+                value={
+                  form.username
+                }
+                onChange={(event) =>
+                  updateField(
+                    'username',
+                    event.target.value
+                  )
+                }
+                required
+              />
+
+              <div className="form-help">
+                Letters, numbers, and
+                underscores only.
               </div>
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Username
-                </label>
+            <div className="form-group">
+              <label className="form-label">
+                Phone
+              </label>
 
-                <input
-                  className="form-input"
-                  type="text"
-                  name="username"
-                  value={
-                    form.username
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
+              <input
+                className="form-input"
+                type="text"
+                value={form.phone}
+                onChange={(event) =>
+                  updateField(
+                    'phone',
+                    event.target.value
+                  )
+                }
+              />
+            </div>
 
-                <div className="form-help">
-                  Letters, numbers,
-                  and underscores only.
-                </div>
-              </div>
+            <div className="form-group">
+              <label className="form-label">
+                Gender
+              </label>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Phone
-                </label>
+              <select
+                className="form-select"
+                value={form.gender}
+                onChange={(event) =>
+                  updateField(
+                    'gender',
+                    event.target.value
+                  )
+                }
+              >
+                <option value="">
+                  Select gender
+                </option>
 
-                <input
-                  className="form-input"
-                  type="text"
-                  name="phone"
-                  value={
-                    form.phone
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-              </div>
+                <option value="male">
+                  Male
+                </option>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Gender
-                </label>
+                <option value="female">
+                  Female
+                </option>
+              </select>
+            </div>
 
-                <select
-                  className="form-select"
-                  name="gender"
-                  value={
-                    form.gender
-                  }
-                  onChange={
-                    handleChange
-                  }
-                >
-                  <option value="">
-                    Select gender
-                  </option>
+            <div className="form-group">
+              <label className="form-label">
+                Address
+              </label>
 
-                  <option value="male">
-                    Male
-                  </option>
+              <input
+                className="form-input"
+                type="text"
+                value={
+                  form.address
+                }
+                onChange={(event) =>
+                  updateField(
+                    'address',
+                    event.target.value
+                  )
+                }
+              />
+            </div>
 
-                  <option value="female">
-                    Female
-                  </option>
-                </select>
-              </div>
+            <div className="form-group">
+              <label className="form-label">
+                Date of Birth
+              </label>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Date of Birth
-                </label>
-
-                <input
-                  className="form-input"
-                  type="date"
-                  name="dateOfBirth"
-                  value={
-                    form.dateOfBirth
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  Address
-                </label>
-
-                <textarea
-                  className="form-input"
-                  name="address"
-                  rows="3"
-                  value={
-                    form.address
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-              </div>
-
+              <input
+                className="form-input"
+                type="date"
+                value={
+                  form.dateOfBirth
+                }
+                onChange={(event) =>
+                  updateField(
+                    'dateOfBirth',
+                    event.target.value
+                  )
+                }
+              />
             </div>
 
             <div className="form-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={
-                  cancelEditing
-                }
-                disabled={saving}
-              >
-                Cancel
-              </button>
-
               <button
                 type="submit"
                 className="btn btn-primary"
@@ -650,98 +528,18 @@ function ParentDetail() {
                   ? 'Saving...'
                   : 'Save Changes'}
               </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={cancelEditing}
+                disabled={saving}
+              >
+                Cancel
+              </button>
             </div>
           </form>
         )}
-
-        {/* =========================
-            CHILDREN
-        ========================= */}
-
-        <div className="card detail-card">
-          <div className="detail-card-header">
-            <div className="detail-card-title">
-              Children
-            </div>
-          </div>
-
-          {children.length === 0 ? (
-            <div className="empty-state">
-              This parent has no children
-              assigned yet.
-            </div>
-          ) : (
-            <div className="table-scroll">
-              <table className="students-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Level</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {children.map(
-                    (relationship) => {
-                      const student =
-                        relationship.students
-
-                      if (!student) {
-                        return null
-                      }
-
-                      return (
-                        <tr
-                          key={
-                            relationship.student_id
-                          }
-                        >
-                          <td>
-                            <button
-                              className="student-name-button"
-                              onClick={() => {
-                                window.location.href =
-                                  `/students/${student.id}`
-                              }}
-                            >
-                              {student.profiles
-                                ?.display_name ||
-                                'Unnamed Student'}
-                            </button>
-                          </td>
-
-                          <td>
-                            {getLevelLabel(
-                              student.level
-                            )}
-                          </td>
-
-                          <td>
-                            <span
-                              className={
-                                `status-badge ${
-                                  student.status ===
-                                  'active'
-                                    ? 'status-active'
-                                    : 'status-inactive'
-                                }`
-                              }
-                            >
-                              {student.status ||
-                                'unknown'}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    }
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
       </main>
     </div>
   )
