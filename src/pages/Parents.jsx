@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import AcademyHeader from '../components/AcademyHeader'
 
 function Parents() {
   const [loading, setLoading] = useState(true)
@@ -47,31 +48,19 @@ function Parents() {
   const filteredParents =
     parents.filter((parent) => {
       const name =
-        parent.profiles?.display_name || ''
+        parent.profiles?.display_name ||
+        ''
 
       return name
         .toLowerCase()
         .includes(search.toLowerCase())
     })
 
-  function formatDate(date) {
-    if (!date) {
-      return '-'
-    }
-
-    return new Date(date).toLocaleDateString(
-      'en-US',
-      {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      }
-    )
-  }
-
   if (loading) {
     return (
-      <div className="page-container">
+      <div className="academy-app">
+        <AcademyHeader />
+
         <div className="page-state">
           Loading parents...
         </div>
@@ -81,111 +70,115 @@ function Parents() {
 
   if (error) {
     return (
-      <div className="page-container">
-        <div className="error-state">
-          <h2>Unable to load parents</h2>
-
-          <p>{error}</p>
-        </div>
+      <div className="error-page">
+        <h1>Chessnuts Academy</h1>
+        <p>{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1>Parents</h1>
+    <div className="academy-app">
+      <AcademyHeader />
 
-          <p>
-            Manage Academy parents
-          </p>
+      <main className="academy-main">
+        <div className="page-header">
+          <div className="page-header-copy">
+            <h1>Parents</h1>
+
+            <p>
+              Manage Academy parents
+            </p>
+          </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              window.location.href =
+                '/parents/add'
+            }}
+          >
+            + Add Parent
+          </button>
         </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            window.location.href =
-              '/parents/add'
-          }}
-        >
-          + Add Parent
-        </button>
-      </div>
+        <div className="students-toolbar">
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search parents..."
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+          />
+        </div>
 
-      <div className="students-toolbar">
-        <input
-          type="text"
-          className="form-input"
-          placeholder="Search parents..."
-          value={search}
-          onChange={(event) =>
-            setSearch(event.target.value)
-          }
-        />
-      </div>
+        <div className="card table-card">
+          {filteredParents.length === 0 ? (
+            <div className="empty-state">
+              {search
+                ? 'No parents match your search.'
+                : 'No parents found.'}
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className="students-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Children</th>
+                    <th>Joined</th>
+                  </tr>
+                </thead>
 
-      <div className="table-card">
-        {filteredParents.length === 0 ? (
-          <div className="empty-state">
-            {search
-              ? 'No parents match your search.'
-              : 'No parents found.'}
-          </div>
-        ) : (
-          <div className="table-wrapper">
-            <table className="students-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Children</th>
-                  <th>Joined</th>
-                </tr>
-              </thead>
+                <tbody>
+                  {filteredParents.map(
+                    (parent) => {
+                      const childrenCount =
+                        parent
+                          .parent_students
+                          ?.length || 0
 
-              <tbody>
-                {filteredParents.map(
-                  (parent) => {
-                    const childrenCount =
-                      parent.parent_students
-                        ?.length || 0
+                      return (
+                        <tr key={parent.id}>
+                          <td>
+                            <button
+                              className="student-name-button"
+                              onClick={() => {
+                                window.location.href =
+                                  `/parents/${parent.id}`
+                              }}
+                            >
+                              {parent.profiles
+                                ?.display_name ||
+                                'Unnamed Parent'}
+                            </button>
+                          </td>
 
-                    return (
-                      <tr
-                        key={parent.id}
-                      >
-                        <td>
-                          <button
-                            className="student-name-button"
-                            onClick={() => {
-                              window.location.href =
-                                `/parents/${parent.id}`
-                            }}
-                          >
-                            {parent.profiles
-                              ?.display_name ||
-                              'Unnamed Parent'}
-                          </button>
-                        </td>
+                          <td>
+                            {childrenCount}
+                          </td>
 
-                        <td>
-                          {childrenCount}
-                        </td>
-
-                        <td>
-                          {formatDate(
-                            parent.created_at
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  }
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                          <td>
+                            {parent.created_at
+                              ? new Date(
+                                  parent.created_at
+                                ).toLocaleDateString(
+                                  'en-GB'
+                                )
+                              : '—'}
+                          </td>
+                        </tr>
+                      )
+                    }
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   )
 }
