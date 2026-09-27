@@ -37,6 +37,18 @@ function StudentDetail({ studentId }) {
   const [availableCoaches, setAvailableCoaches] =
     useState([])
 
+  const [selectedParentId, setSelectedParentId] =
+    useState('')
+
+  const [parentRelationship, setParentRelationship] =
+    useState('')
+
+  const [parentIsPrimary, setParentIsPrimary] =
+    useState(false)
+
+  const [selectedCoachId, setSelectedCoachId] =
+    useState('')
+
   const [form, setForm] = useState({
     username: '',
     displayName: '',
@@ -73,6 +85,8 @@ function StudentDetail({ studentId }) {
           ),
           parent_students (
             parent_id,
+            relationship,
+            is_primary,
             parents (
               id,
               profiles (
@@ -83,6 +97,8 @@ function StudentDetail({ studentId }) {
           ),
           coach_students (
             coach_id,
+            started_at,
+            ended_at,
             coaches (
               id,
               profiles (
@@ -105,14 +121,26 @@ function StudentDetail({ studentId }) {
 
       setParents(
         (data.parent_students || [])
-          .map((item) => item.parents)
-          .filter(Boolean)
+          .filter((item) => item.parents)
+          .map((item) => ({
+            ...item.parents,
+            relationship:
+              item.relationship || '',
+            is_primary:
+              item.is_primary || false,
+          }))
       )
 
       setCoaches(
         (data.coach_students || [])
-          .map((item) => item.coaches)
-          .filter(Boolean)
+          .filter((item) => item.coaches)
+          .map((item) => ({
+            ...item.coaches,
+            started_at:
+              item.started_at || null,
+            ended_at:
+              item.ended_at || null,
+          }))
       )
 
       setForm({
@@ -254,6 +282,10 @@ function StudentDetail({ studentId }) {
     setRelationshipLoading(true)
     setRelationshipError('')
 
+    setSelectedParentId('')
+    setParentRelationship('')
+    setParentIsPrimary(false)
+
     const {
       data,
       error,
@@ -287,12 +319,15 @@ function StudentDetail({ studentId }) {
     )
 
     setShowParentSelector(true)
+    setShowCoachSelector(false)
     setRelationshipLoading(false)
   }
 
   async function loadAvailableCoaches() {
     setRelationshipLoading(true)
     setRelationshipError('')
+
+    setSelectedCoachId('')
 
     const {
       data,
@@ -327,10 +362,39 @@ function StudentDetail({ studentId }) {
     )
 
     setShowCoachSelector(true)
+    setShowParentSelector(false)
     setRelationshipLoading(false)
   }
 
-  async function addParent(parentId) {
+  function cancelParentSelector() {
+    setShowParentSelector(false)
+    setSelectedParentId('')
+    setParentRelationship('')
+    setParentIsPrimary(false)
+    setRelationshipError('')
+  }
+
+  function cancelCoachSelector() {
+    setShowCoachSelector(false)
+    setSelectedCoachId('')
+    setRelationshipError('')
+  }
+
+  async function addParent() {
+    if (!selectedParentId) {
+      setRelationshipError(
+        'Please select a parent.'
+      )
+      return
+    }
+
+    if (!parentRelationship) {
+      setRelationshipError(
+        'Please select the relationship.'
+      )
+      return
+    }
+
     setRelationshipLoading(true)
     setRelationshipError('')
 
@@ -338,8 +402,17 @@ function StudentDetail({ studentId }) {
       await supabase.rpc(
         'admin_add_parent_student',
         {
-          p_parent_id: parentId,
-          p_student_id: student.id,
+          p_parent_id:
+            selectedParentId,
+
+          p_student_id:
+            student.id,
+
+          p_relationship:
+            parentRelationship,
+
+          p_is_primary:
+            parentIsPrimary,
         }
       )
 
@@ -351,17 +424,28 @@ function StudentDetail({ studentId }) {
 
     const parent =
       availableParents.find(
-        (item) => item.id === parentId
+        (item) =>
+          item.id === selectedParentId
       )
 
     if (parent) {
       setParents((current) => [
         ...current,
-        parent,
+
+        {
+          ...parent,
+          relationship:
+            parentRelationship,
+          is_primary:
+            parentIsPrimary,
+        },
       ])
     }
 
     setShowParentSelector(false)
+    setSelectedParentId('')
+    setParentRelationship('')
+    setParentIsPrimary(false)
     setRelationshipLoading(false)
   }
 
@@ -394,16 +478,34 @@ function StudentDetail({ studentId }) {
     setRelationshipLoading(false)
   }
 
-  async function addCoach(coachId) {
+  async function addCoach() {
+    if (!selectedCoachId) {
+      setRelationshipError(
+        'Please select a coach.'
+      )
+      return
+    }
+
     setRelationshipLoading(true)
     setRelationshipError('')
+
+    const today =
+      new Date()
+        .toISOString()
+        .split('T')[0]
 
     const { error } =
       await supabase.rpc(
         'admin_add_coach_student',
         {
-          p_coach_id: coachId,
-          p_student_id: student.id,
+          p_coach_id:
+            selectedCoachId,
+
+          p_student_id:
+            student.id,
+
+          p_started_at:
+            today,
         }
       )
 
@@ -415,17 +517,24 @@ function StudentDetail({ studentId }) {
 
     const coach =
       availableCoaches.find(
-        (item) => item.id === coachId
+        (item) =>
+          item.id === selectedCoachId
       )
 
     if (coach) {
       setCoaches((current) => [
         ...current,
-        coach,
+
+        {
+          ...coach,
+          started_at: today,
+          ended_at: null,
+        },
       ])
     }
 
     setShowCoachSelector(false)
+    setSelectedCoachId('')
     setRelationshipLoading(false)
   }
 
@@ -433,12 +542,18 @@ function StudentDetail({ studentId }) {
     setRelationshipLoading(true)
     setRelationshipError('')
 
+    const today =
+      new Date()
+        .toISOString()
+        .split('T')[0]
+
     const { error } =
       await supabase.rpc(
         'admin_remove_coach_student',
         {
           p_coach_id: coachId,
           p_student_id: student.id,
+          p_ended_at: today,
         }
       )
 
@@ -692,49 +807,144 @@ function StudentDetail({ studentId }) {
               {showParentSelector && (
                 <div className="form-group">
                   <label className="form-label">
-                    Select Parent
+                    Parent
                   </label>
 
+                  <select
+                    className="form-select"
+                    value={selectedParentId}
+                    onChange={(event) =>
+                      setSelectedParentId(
+                        event.target.value
+                      )
+                    }
+                    disabled={
+                      relationshipLoading
+                    }
+                  >
+                    <option value="">
+                      Select a parent
+                    </option>
+
+                    {availableParents.map(
+                      (parent) => (
+                        <option
+                          key={parent.id}
+                          value={parent.id}
+                        >
+                          {parent.profiles
+                            ?.display_name ||
+                            'Unnamed Parent'}
+                        </option>
+                      )
+                    )}
+                  </select>
+
                   {availableParents.length ===
-                  0 ? (
-                    <div className="detail-value">
+                    0 && (
+                    <div className="form-help">
                       No available parents.
                     </div>
-                  ) : (
-                    <select
-                      className="form-select"
-                      defaultValue=""
-                      onChange={(event) => {
-                        if (
-                          event.target.value
-                        ) {
-                          addParent(
-                            event.target.value
-                          )
-                        }
-                      }}
+                  )}
+
+                  <label className="form-label">
+                    Relationship
+                  </label>
+
+                  <select
+                    className="form-select"
+                    value={
+                      parentRelationship
+                    }
+                    onChange={(event) =>
+                      setParentRelationship(
+                        event.target.value
+                      )
+                    }
+                    disabled={
+                      relationshipLoading
+                    }
+                  >
+                    <option value="">
+                      Select relationship
+                    </option>
+
+                    <option value="Mother">
+                      Mother
+                    </option>
+
+                    <option value="Father">
+                      Father
+                    </option>
+
+                    <option value="Guardian">
+                      Guardian
+                    </option>
+
+                    <option value="Other">
+                      Other
+                    </option>
+                  </select>
+
+                  <label className="form-label">
+                    Primary Parent
+                  </label>
+
+                  <select
+                    className="form-select"
+                    value={
+                      parentIsPrimary
+                        ? 'true'
+                        : 'false'
+                    }
+                    onChange={(event) =>
+                      setParentIsPrimary(
+                        event.target.value ===
+                          'true'
+                      )
+                    }
+                    disabled={
+                      relationshipLoading
+                    }
+                  >
+                    <option value="false">
+                      No
+                    </option>
+
+                    <option value="true">
+                      Yes
+                    </option>
+                  </select>
+
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={addParent}
+                      disabled={
+                        relationshipLoading ||
+                        !selectedParentId ||
+                        !parentRelationship
+                      }
+                    >
+                      {relationshipLoading
+                        ? 'Adding...'
+                        : 'Add Parent'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={
+                        cancelParentSelector
+                      }
                       disabled={
                         relationshipLoading
                       }
                     >
-                      <option value="">
-                        Select a parent
-                      </option>
-
-                      {availableParents.map(
-                        (parent) => (
-                          <option
-                            key={parent.id}
-                            value={parent.id}
-                          >
-                            {parent.profiles
-                              ?.display_name ||
-                              'Unnamed Parent'}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  )}
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -762,6 +972,25 @@ function StudentDetail({ studentId }) {
                           @{parent.profiles.username}
                         </div>
                       )}
+
+                      <div className="detail-label">
+                        Relationship
+                      </div>
+
+                      <div className="detail-value">
+                        {parent.relationship ||
+                          '—'}
+                      </div>
+
+                      <div className="detail-label">
+                        Primary
+                      </div>
+
+                      <div className="detail-value">
+                        {parent.is_primary
+                          ? 'Yes'
+                          : 'No'}
+                      </div>
 
                       <button
                         className="btn btn-secondary"
@@ -810,49 +1039,74 @@ function StudentDetail({ studentId }) {
               {showCoachSelector && (
                 <div className="form-group">
                   <label className="form-label">
-                    Select Coach
+                    Coach
                   </label>
 
+                  <select
+                    className="form-select"
+                    value={selectedCoachId}
+                    onChange={(event) =>
+                      setSelectedCoachId(
+                        event.target.value
+                      )
+                    }
+                    disabled={
+                      relationshipLoading
+                    }
+                  >
+                    <option value="">
+                      Select a coach
+                    </option>
+
+                    {availableCoaches.map(
+                      (coach) => (
+                        <option
+                          key={coach.id}
+                          value={coach.id}
+                        >
+                          {coach.profiles
+                            ?.display_name ||
+                            'Unnamed Coach'}
+                        </option>
+                      )
+                    )}
+                  </select>
+
                   {availableCoaches.length ===
-                  0 ? (
-                    <div className="detail-value">
+                    0 && (
+                    <div className="form-help">
                       No available coaches.
                     </div>
-                  ) : (
-                    <select
-                      className="form-select"
-                      defaultValue=""
-                      onChange={(event) => {
-                        if (
-                          event.target.value
-                        ) {
-                          addCoach(
-                            event.target.value
-                          )
-                        }
-                      }}
+                  )}
+
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={addCoach}
+                      disabled={
+                        relationshipLoading ||
+                        !selectedCoachId
+                      }
+                    >
+                      {relationshipLoading
+                        ? 'Adding...'
+                        : 'Add Coach'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={
+                        cancelCoachSelector
+                      }
                       disabled={
                         relationshipLoading
                       }
                     >
-                      <option value="">
-                        Select a coach
-                      </option>
-
-                      {availableCoaches.map(
-                        (coach) => (
-                          <option
-                            key={coach.id}
-                            value={coach.id}
-                          >
-                            {coach.profiles
-                              ?.display_name ||
-                              'Unnamed Coach'}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  )}
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -880,6 +1134,16 @@ function StudentDetail({ studentId }) {
                           @{coach.profiles.username}
                         </div>
                       )}
+
+                      <div className="detail-label">
+                        Started
+                      </div>
+
+                      <div className="detail-value">
+                        {formatDate(
+                          coach.started_at
+                        )}
+                      </div>
 
                       <button
                         className="btn btn-secondary"
