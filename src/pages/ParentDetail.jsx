@@ -2,10 +2,30 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import AcademyHeader from '../components/AcademyHeader'
 
-function ParentDetail({ parentId }) {
+function ParentDetail() {
+  const path = window.location.pathname
+  const parentId = path.split('/')[2]
+
   const [loading, setLoading] = useState(true)
   const [parent, setParent] = useState(null)
+
   const [error, setError] = useState('')
+
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const [saveError, setSaveError] = useState('')
+  const [saveSuccess, setSaveSuccess] =
+    useState(false)
+
+  const [form, setForm] = useState({
+    username: '',
+    displayName: '',
+    phone: '',
+    address: '',
+    gender: '',
+    dateOfBirth: '',
+  })
 
   useEffect(() => {
     async function loadParent() {
@@ -21,8 +41,8 @@ function ParentDetail({ parentId }) {
           id,
           created_at,
           profiles (
-            display_name,
             username,
+            display_name,
             phone,
             address,
             gender,
@@ -50,6 +70,25 @@ function ParentDetail({ parentId }) {
       }
 
       setParent(data)
+
+      const profile =
+        data?.profiles || {}
+
+      setForm({
+        username:
+          profile.username || '',
+        displayName:
+          profile.display_name || '',
+        phone:
+          profile.phone || '',
+        address:
+          profile.address || '',
+        gender:
+          profile.gender || '',
+        dateOfBirth:
+          profile.date_of_birth || '',
+      })
+
       setLoading(false)
     }
 
@@ -60,22 +99,17 @@ function ParentDetail({ parentId }) {
 
   function formatDate(date) {
     if (!date) {
-      return '-'
+      return '—'
     }
 
     return new Date(date).toLocaleDateString(
-      'en-US',
-      {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      }
+      'en-GB'
     )
   }
 
-  function formatGender(gender) {
+  function getGenderLabel(gender) {
     if (!gender) {
-      return '-'
+      return '—'
     }
 
     return (
@@ -84,16 +118,169 @@ function ParentDetail({ parentId }) {
     )
   }
 
+  function getLevelLabel(level) {
+    const levels = {
+      BASIC_1: 'Basic I',
+      BASIC_2: 'Basic II',
+      INTERMEDIATE_1:
+        'Intermediate I',
+      INTERMEDIATE_2:
+        'Intermediate II',
+      PRE_ADVANCED:
+        'Pre-Advanced',
+      ADVANCED_1:
+        'Advanced I',
+      ADVANCED_2:
+        'Advanced II',
+      EXPERT_1:
+        'Expert I',
+      EXPERT_2:
+        'Expert II',
+    }
+
+    return levels[level] || level || '—'
+  }
+
+  function handleChange(event) {
+    const {
+      name,
+      value,
+    } = event.target
+
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
+
+  function startEditing() {
+    setSaveError('')
+    setSaveSuccess(false)
+    setEditing(true)
+  }
+
+  function cancelEditing() {
+    const profile =
+      parent?.profiles || {}
+
+    setForm({
+      username:
+        profile.username || '',
+      displayName:
+        profile.display_name || '',
+      phone:
+        profile.phone || '',
+      address:
+        profile.address || '',
+      gender:
+        profile.gender || '',
+      dateOfBirth:
+        profile.date_of_birth || '',
+    })
+
+    setSaveError('')
+    setSaveSuccess(false)
+    setEditing(false)
+  }
+
+  async function handleSave(event) {
+    event.preventDefault()
+
+    setSaving(true)
+    setSaveError('')
+    setSaveSuccess(false)
+
+    const username =
+      form.username.trim()
+
+    const displayName =
+      form.displayName.trim()
+
+    if (!username) {
+      setSaveError(
+        'Username cannot be empty.'
+      )
+      setSaving(false)
+      return
+    }
+
+    if (!displayName) {
+      setSaveError(
+        'Display name cannot be empty.'
+      )
+      setSaving(false)
+      return
+    }
+
+    if (
+      !/^[a-zA-Z0-9_]+$/.test(
+        username
+      )
+    ) {
+      setSaveError(
+        'Username can only contain letters, numbers, and underscores.'
+      )
+      setSaving(false)
+      return
+    }
+
+    const {
+      error,
+    } = await supabase.rpc(
+      'admin_update_parent',
+      {
+        p_parent_id: parentId,
+        p_username: username,
+        p_display_name:
+          displayName,
+        p_phone:
+          form.phone.trim() || null,
+        p_address:
+          form.address.trim() || null,
+        p_gender:
+          form.gender || null,
+        p_date_of_birth:
+          form.dateOfBirth || null,
+      }
+    )
+
+    if (error) {
+      setSaveError(error.message)
+      setSaving(false)
+      return
+    }
+
+    setParent((current) => ({
+      ...current,
+      profiles: {
+        ...current.profiles,
+        username,
+        display_name:
+          displayName,
+        phone:
+          form.phone.trim() || null,
+        address:
+          form.address.trim() || null,
+        gender:
+          form.gender || null,
+        date_of_birth:
+          form.dateOfBirth || null,
+      },
+    }))
+
+    setSaveSuccess(true)
+    setEditing(false)
+    setSaving(false)
+  }
+
   if (loading) {
     return (
       <div className="academy-app">
         <AcademyHeader />
 
-        <main className="academy-main">
-          <div className="page-state">
-            Loading parent...
-          </div>
-        </main>
+        <div className="page-state">
+          Loading parent...
+        </div>
       </div>
     )
   }
@@ -104,22 +291,12 @@ function ParentDetail({ parentId }) {
         <AcademyHeader />
 
         <main className="academy-main">
-          <div className="error-state">
-            <h2>
-              Unable to load parent
-            </h2>
+          <div className="error-page">
+            <h1>
+              Chessnuts Academy
+            </h1>
 
             <p>{error}</p>
-
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                window.location.href =
-                  '/parents'
-              }}
-            >
-              ← Back to Parents
-            </button>
           </div>
         </main>
       </div>
@@ -151,6 +328,11 @@ function ParentDetail({ parentId }) {
       <AcademyHeader />
 
       <main className="academy-main">
+
+        {/* =========================
+            BACK
+        ========================= */}
+
         <div className="detail-back">
           <button
             className="btn btn-ghost"
@@ -163,7 +345,11 @@ function ParentDetail({ parentId }) {
           </button>
         </div>
 
-        <div className="page-header">
+        {/* =========================
+            HEADER
+        ========================= */}
+
+        <div className="detail-heading">
           <div>
             <h1>
               {profile.display_name ||
@@ -174,105 +360,305 @@ function ParentDetail({ parentId }) {
               Parent Details
             </p>
           </div>
+
+          {!editing && (
+            <button
+              className="btn btn-primary"
+              onClick={startEditing}
+            >
+              Edit Parent
+            </button>
+          )}
         </div>
 
         {/* =========================
-            PROFILE
+            SUCCESS
         ========================= */}
 
-        <div className="detail-card">
-          <div className="detail-card-header">
-            <div className="detail-card-title">
-              Profile
+        {saveSuccess && (
+          <div className="success-card">
+            Parent information updated
+            successfully.
+          </div>
+        )}
+
+        {/* =========================
+            PROFILE VIEW
+        ========================= */}
+
+        {!editing && (
+          <div className="card detail-card">
+            <div className="detail-card-header">
+              <div className="detail-card-title">
+                Profile
+              </div>
+            </div>
+
+            <div className="detail-grid">
+
+              <div>
+                <div className="detail-label">
+                  Name
+                </div>
+
+                <div className="detail-value-strong">
+                  {profile.display_name ||
+                    '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Username
+                </div>
+
+                <div className="detail-value">
+                  {profile.username ||
+                    '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Phone
+                </div>
+
+                <div className="detail-value">
+                  {profile.phone ||
+                    '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Gender
+                </div>
+
+                <div className="detail-value">
+                  {getGenderLabel(
+                    profile.gender
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Date of Birth
+                </div>
+
+                <div className="detail-value">
+                  {formatDate(
+                    profile.date_of_birth
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Joined
+                </div>
+
+                <div className="detail-value">
+                  {formatDate(
+                    parent.created_at
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Address
+                </div>
+
+                <div className="detail-value">
+                  {profile.address ||
+                    '—'}
+                </div>
+              </div>
+
             </div>
           </div>
+        )}
 
-          <div className="detail-grid">
-            <div>
-              <div className="detail-label">
-                Name
-              </div>
+        {/* =========================
+            EDIT FORM
+        ========================= */}
 
-              <div className="detail-value-strong">
-                {profile.display_name ||
-                  '-'}
-              </div>
+        {editing && (
+          <form
+            className="form-card"
+            onSubmit={handleSave}
+          >
+            <div className="form-header">
+              <h2>
+                Edit Parent
+              </h2>
             </div>
 
-            <div>
-              <div className="detail-label">
-                Username
+            {saveError && (
+              <div className="error-state">
+                {saveError}
+              </div>
+            )}
+
+            <div className="detail-grid">
+
+              <div className="form-group">
+                <label className="form-label">
+                  Name
+                </label>
+
+                <input
+                  className="form-input"
+                  type="text"
+                  name="displayName"
+                  value={
+                    form.displayName
+                  }
+                  onChange={
+                    handleChange
+                  }
+                />
               </div>
 
-              <div className="detail-value">
-                {profile.username ||
-                  '-'}
+              <div className="form-group">
+                <label className="form-label">
+                  Username
+                </label>
+
+                <input
+                  className="form-input"
+                  type="text"
+                  name="username"
+                  value={
+                    form.username
+                  }
+                  onChange={
+                    handleChange
+                  }
+                />
+
+                <div className="form-help">
+                  Letters, numbers,
+                  and underscores only.
+                </div>
               </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Phone
+                </label>
+
+                <input
+                  className="form-input"
+                  type="text"
+                  name="phone"
+                  value={
+                    form.phone
+                  }
+                  onChange={
+                    handleChange
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Gender
+                </label>
+
+                <select
+                  className="form-select"
+                  name="gender"
+                  value={
+                    form.gender
+                  }
+                  onChange={
+                    handleChange
+                  }
+                >
+                  <option value="">
+                    Select gender
+                  </option>
+
+                  <option value="male">
+                    Male
+                  </option>
+
+                  <option value="female">
+                    Female
+                  </option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Date of Birth
+                </label>
+
+                <input
+                  className="form-input"
+                  type="date"
+                  name="dateOfBirth"
+                  value={
+                    form.dateOfBirth
+                  }
+                  onChange={
+                    handleChange
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Address
+                </label>
+
+                <textarea
+                  className="form-input"
+                  name="address"
+                  rows="3"
+                  value={
+                    form.address
+                  }
+                  onChange={
+                    handleChange
+                  }
+                />
+              </div>
+
             </div>
 
-            <div>
-              <div className="detail-label">
-                Phone
-              </div>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={
+                  cancelEditing
+                }
+                disabled={saving}
+              >
+                Cancel
+              </button>
 
-              <div className="detail-value">
-                {profile.phone || '-'}
-              </div>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={saving}
+              >
+                {saving
+                  ? 'Saving...'
+                  : 'Save Changes'}
+              </button>
             </div>
-
-            <div>
-              <div className="detail-label">
-                Gender
-              </div>
-
-              <div className="detail-value">
-                {formatGender(
-                  profile.gender
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="detail-label">
-                Date of Birth
-              </div>
-
-              <div className="detail-value">
-                {formatDate(
-                  profile.date_of_birth
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="detail-label">
-                Joined
-              </div>
-
-              <div className="detail-value">
-                {formatDate(
-                  parent.created_at
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="detail-label">
-                Address
-              </div>
-
-              <div className="detail-value">
-                {profile.address || '-'}
-              </div>
-            </div>
-          </div>
-        </div>
+          </form>
+        )}
 
         {/* =========================
             CHILDREN
         ========================= */}
 
-        <div className="detail-card">
+        <div className="card detail-card">
           <div className="detail-card-header">
             <div className="detail-card-title">
               Children
@@ -285,7 +671,7 @@ function ParentDetail({ parentId }) {
               assigned yet.
             </div>
           ) : (
-            <div className="table-wrapper">
+            <div className="table-scroll">
               <table className="students-table">
                 <thead>
                   <tr>
@@ -319,23 +705,32 @@ function ParentDetail({ parentId }) {
                                   `/students/${student.id}`
                               }}
                             >
-                              {
-                                student
-                                  .profiles
-                                  ?.display_name ||
-                                  'Unnamed Student'
-                              }
+                              {student.profiles
+                                ?.display_name ||
+                                'Unnamed Student'}
                             </button>
                           </td>
 
                           <td>
-                            {student.level ||
-                              '-'}
+                            {getLevelLabel(
+                              student.level
+                            )}
                           </td>
 
                           <td>
-                            {student.status ||
-                              '-'}
+                            <span
+                              className={
+                                `status-badge ${
+                                  student.status ===
+                                  'active'
+                                    ? 'status-active'
+                                    : 'status-inactive'
+                                }`
+                              }
+                            >
+                              {student.status ||
+                                'unknown'}
+                            </span>
                           </td>
                         </tr>
                       )
@@ -346,6 +741,7 @@ function ParentDetail({ parentId }) {
             </div>
           )}
         </div>
+
       </main>
     </div>
   )
