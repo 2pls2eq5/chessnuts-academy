@@ -35,7 +35,6 @@ function CoachDetail({ coachId }) {
         .from('coaches')
         .select(`
           id,
-          date_of_birth,
           join_date,
           status,
           bio,
@@ -44,7 +43,8 @@ function CoachDetail({ coachId }) {
             username,
             phone,
             address,
-            gender
+            gender,
+            date_of_birth
           )
         `)
         .eq('id', coachId)
@@ -75,7 +75,7 @@ function CoachDetail({ coachId }) {
           data.profiles?.gender || '',
 
         dateOfBirth:
-          data.date_of_birth || '',
+          data.profiles?.date_of_birth || '',
 
         bio:
           data.bio || '',
@@ -118,7 +118,7 @@ function CoachDetail({ coachId }) {
         coach.profiles?.gender || '',
 
       dateOfBirth:
-        coach.date_of_birth || '',
+        coach.profiles?.date_of_birth || '',
 
       bio:
         coach.bio || '',
@@ -183,9 +183,6 @@ function CoachDetail({ coachId }) {
     setCoach((current) => ({
       ...current,
 
-      date_of_birth:
-        form.dateOfBirth || null,
-
       bio:
         form.bio || null,
 
@@ -209,6 +206,9 @@ function CoachDetail({ coachId }) {
 
         gender:
           form.gender || null,
+
+        date_of_birth:
+          form.dateOfBirth || null,
       },
     }))
 
@@ -391,7 +391,8 @@ function CoachDetail({ coachId }) {
 
                 <div className="detail-value">
                   {formatDate(
-                    coach.date_of_birth
+                    coach.profiles
+                      ?.date_of_birth
                   )}
                 </div>
               </div>
