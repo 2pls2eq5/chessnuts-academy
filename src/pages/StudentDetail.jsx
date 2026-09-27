@@ -1022,18 +1022,6 @@ function StudentDetail({ studentId }) {
                           </div>
                         </div>
 
-                        <div>
-                          <div className="detail-label">
-                            Primary
-                          </div>
-
-                          <div className="detail-value">
-                            {parent.is_primary
-                              ? 'Yes'
-                              : 'No'}
-                          </div>
-                        </div>
-
                         <button
                           className="btn btn-secondary"
                           onClick={() =>
