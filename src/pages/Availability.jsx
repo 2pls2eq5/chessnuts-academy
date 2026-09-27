@@ -12,79 +12,47 @@ const DAYS = [
   { value: 6, label: 'Saturday' },
 ]
 
-const DEFAULT_TIMEZONE = 'Asia/Jakarta'
+const TIMEZONES = [
+  'Asia/Jakarta',
+  'Asia/Makassar',
+  'Asia/Jayapura',
+]
 
-function getDayLabel(day) {
-  return (
-    DAYS.find((item) => item.value === day)
-      ?.label || day
-  )
-}
-
-function formatTime(time) {
-  return time
-    ? time.slice(0, 5)
-    : ''
-}
-
-function getCoachName(coach) {
-  return (
-    coach?.profiles?.display_name ||
-    'Unnamed Coach'
-  )
+const EMPTY_FORM = {
+  coachId: '',
+  dayOfWeek: '1',
+  startTime: '09:00',
+  endTime: '10:00',
+  timezone: 'Asia/Jakarta',
+  status: 'active',
 }
 
 function Availability() {
-  const [loading, setLoading] =
-    useState(true)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [removingId, setRemovingId] = useState(null)
 
-  const [availability, setAvailability] =
-    useState([])
+  const [availability, setAvailability] = useState([])
+  const [coaches, setCoaches] = useState([])
 
-  const [coaches, setCoaches] =
-    useState([])
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
-  const [search, setSearch] =
-    useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [editingAvailability, setEditingAvailability] = useState(null)
 
-  const [statusFilter, setStatusFilter] =
-    useState('all')
+  const [form, setForm] = useState(EMPTY_FORM)
 
-  const [error, setError] =
-    useState('')
-
-  const [message, setMessage] =
-    useState('')
-
-  const [showForm, setShowForm] =
-    useState(false)
-
-  const [editingAvailability, setEditingAvailability] =
-    useState(null)
-
-  const [saving, setSaving] =
-    useState(false)
-
-  const [form, setForm] = useState({
-    coachId: '',
-    dayOfWeek: 1,
-    startTime: '09:00',
-    endTime: '10:00',
-    timezone: DEFAULT_TIMEZONE,
-    status: 'active',
-  })
-
-  useEffect(() => {
-    loadData()
-  }, [])
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   async function loadData() {
     setLoading(true)
     setError('')
 
     const [
-      availabilityResult,
-      coachesResult,
+      { data: availabilityData, error: availabilityError },
+      { data: coachesData, error: coachesError },
     ] = await Promise.all([
       supabase
         .from('coach_availability')
@@ -98,95 +66,90 @@ function Availability() {
           status,
           coaches (
             id,
-            profile_id,
             profiles (
               display_name
             )
           )
         `)
-        .order('day_of_week', {
-          ascending: true,
-        })
-        .order('start_time', {
-          ascending: true,
-        }),
+        .order('day_of_week', { ascending: true })
+        .order('start_time', { ascending: true }),
 
       supabase
         .from('coaches')
         .select(`
           id,
-          profile_id,
           profiles (
             display_name
           )
-        `),
+        `)
+        .order('profiles(display_name)', { ascending: true }),
     ])
 
-    if (availabilityResult.error) {
-      setError(
-        availabilityResult.error.message
-      )
+    if (availabilityError) {
+      setError(availabilityError.message)
       setLoading(false)
       return
     }
 
-    if (coachesResult.error) {
-      setError(
-        coachesResult.error.message
-      )
+    if (coachesError) {
+      setError(coachesError.message)
       setLoading(false)
       return
     }
 
-    const sortedCoaches =
-      [...(coachesResult.data || [])]
-        .sort((a, b) =>
-          getCoachName(a).localeCompare(
-            getCoachName(b)
-          )
-        )
-
-    setAvailability(
-      availabilityResult.data || []
-    )
-
-    setCoaches(sortedCoaches)
-
+    setAvailability(availabilityData || [])
+    setCoaches(coachesData || [])
     setLoading(false)
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  function getDayLabel(dayOfWeek) {
+    return (
+      DAYS.find((day) => day.value === Number(dayOfWeek))?.label ||
+      'Unknown'
+    )
+  }
+
+  function getCoachName(item) {
+    return item.coaches?.profiles?.display_name || 'Unnamed Coach'
+  }
+
+  function resetForm() {
+    setForm(EMPTY_FORM)
+    setEditingAvailability(null)
   }
 
   function openAddForm() {
     setError('')
-    setMessage('')
-    setEditingAvailability(null)
+    setSuccess('')
+    resetForm()
 
-    setForm({
-      coachId:
-        coaches[0]?.id || '',
-      dayOfWeek: 1,
-      startTime: '09:00',
-      endTime: '10:00',
-      timezone: DEFAULT_TIMEZONE,
-      status: 'active',
-    })
+    if (coaches.length > 0) {
+      setForm((current) => ({
+        ...current,
+        coachId: coaches[0].id,
+      }))
+    }
 
     setShowForm(true)
   }
 
   function openEditForm(item) {
     setError('')
-    setMessage('')
+    setSuccess('')
+
     setEditingAvailability(item)
 
     setForm({
       coachId: item.coach_id,
-      dayOfWeek: item.day_of_week,
-      startTime:
-        formatTime(item.start_time),
-      endTime:
-        formatTime(item.end_time),
-      timezone: item.timezone,
-      status: item.status,
+      dayOfWeek: String(item.day_of_week),
+      startTime: item.start_time?.slice(0, 5) || '',
+      endTime: item.end_time?.slice(0, 5) || '',
+      timezone: item.timezone || 'Asia/Jakarta',
+      status: item.status || 'active',
     })
 
     setShowForm(true)
@@ -196,22 +159,7 @@ function Availability() {
     if (saving) return
 
     setShowForm(false)
-    setEditingAvailability(null)
-  }
-
-  function handleChange(e) {
-    const {
-      name,
-      value,
-    } = e.target
-
-    setForm((current) => ({
-      ...current,
-      [name]:
-        name === 'dayOfWeek'
-          ? Number(value)
-          : value,
-    }))
+    resetForm()
   }
 
   function validateForm() {
@@ -219,80 +167,63 @@ function Availability() {
       return 'Please select a coach.'
     }
 
-    if (
-      !form.startTime ||
-      !form.endTime
-    ) {
-      return 'Start and end time are required.'
+    if (!form.startTime || !form.endTime) {
+      return 'Start time and end time are required.'
     }
 
-    if (
-      form.startTime >=
-      form.endTime
-    ) {
-      return 'Start time must be before end time.'
+    if (form.startTime >= form.endTime) {
+      return 'Start time must be earlier than end time.'
     }
 
     if (!form.timezone.trim()) {
       return 'Timezone is required.'
     }
 
-    /*
-     * [start, end)
-     *
-     * 19:00–20:00
-     * 20:00–21:00
-     *
-     * are allowed.
-     */
-    const conflict =
-      availability.find((item) => {
-        if (
-          editingAvailability &&
-          item.id ===
-            editingAvailability.id
-        ) {
-          return false
-        }
+    const duplicate = availability.find((item) => {
+      if (editingAvailability && item.id === editingAvailability.id) {
+        return false
+      }
 
-        if (
-          item.coach_id !==
-            form.coachId ||
-          item.day_of_week !==
-            form.dayOfWeek ||
-          item.timezone !==
-            form.timezone ||
-          item.status !== 'active' ||
-          form.status !== 'active'
-        ) {
-          return false
-        }
+      if (item.status !== 'active') {
+        return false
+      }
 
-        return (
-          item.start_time <
-            form.endTime &&
-          item.end_time >
-            form.startTime
-        )
-      })
+      if (form.status !== 'active') {
+        return false
+      }
 
-    if (conflict) {
+      if (item.coach_id !== form.coachId) {
+        return false
+      }
+
+      if (Number(item.day_of_week) !== Number(form.dayOfWeek)) {
+        return false
+      }
+
+      if (item.timezone !== form.timezone.trim()) {
+        return false
+      }
+
       return (
-        'This availability overlaps another active availability for this coach.'
+        item.start_time < form.endTime &&
+        item.end_time > form.startTime
       )
+    })
+
+    if (duplicate) {
+      return 'This availability overlaps an existing active availability.'
     }
 
     return ''
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function handleSubmit(event) {
+    event.preventDefault()
 
     setError('')
-    setMessage('')
+    setSuccess('')
 
-    const validationError =
-      validateForm()
+    const validationError = validateForm()
 
     if (validationError) {
       setError(validationError)
@@ -301,249 +232,137 @@ function Availability() {
 
     setSaving(true)
 
+    const payload = {
+      p_coach_id: form.coachId,
+      p_day_of_week: Number(form.dayOfWeek),
+      p_start_time: form.startTime,
+      p_end_time: form.endTime,
+      p_timezone: form.timezone.trim(),
+      p_status: form.status,
+    }
+
+    let result
+
     if (editingAvailability) {
-      const {
-        error: updateError,
-      } = await supabase
-        .from('coach_availability')
-        .update({
-          coach_id:
-            form.coachId,
-          day_of_week:
-            form.dayOfWeek,
-          start_time:
-            form.startTime,
-          end_time:
-            form.endTime,
-          timezone:
-            form.timezone.trim(),
-          status:
-            form.status,
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq(
-          'id',
-          editingAvailability.id
-        )
-
-      if (updateError) {
-        setError(
-          updateError.message
-        )
-        setSaving(false)
-        return
-      }
-
-      setMessage(
-        'Availability updated successfully.'
+      result = await supabase.rpc(
+        'admin_update_coach_availability',
+        {
+          p_id: editingAvailability.id,
+          ...payload,
+        }
       )
     } else {
-      const {
-        error: insertError,
-      } = await supabase
-        .from('coach_availability')
-        .insert({
-          coach_id:
-            form.coachId,
-          day_of_week:
-            form.dayOfWeek,
-          start_time:
-            form.startTime,
-          end_time:
-            form.endTime,
-          timezone:
-            form.timezone.trim(),
-          status:
-            form.status,
-        })
-
-      if (insertError) {
-        setError(
-          insertError.message
-        )
-        setSaving(false)
-        return
-      }
-
-      setMessage(
-        'Availability added successfully.'
+      result = await supabase.rpc(
+        'admin_create_coach_availability',
+        payload
       )
+    }
+
+    if (result.error) {
+      setError(result.error.message)
+      setSaving(false)
+      return
     }
 
     setSaving(false)
     setShowForm(false)
-    setEditingAvailability(null)
+    resetForm()
+
+    setSuccess(
+      editingAvailability
+        ? 'Availability updated successfully.'
+        : 'Availability created successfully.'
+    )
 
     await loadData()
   }
 
-  async function toggleStatus(item) {
+  async function handleToggleStatus(item) {
     setError('')
-    setMessage('')
+    setSuccess('')
 
     const nextStatus =
-      item.status === 'active'
-        ? 'inactive'
-        : 'active'
+      item.status === 'active' ? 'inactive' : 'active'
 
-    /*
-     * Re-check overlap when activating.
-     */
-    if (nextStatus === 'active') {
-      const conflict =
-        availability.find((other) => {
-          if (
-            other.id === item.id
-          ) {
-            return false
-          }
-
-          if (
-            other.coach_id !==
-              item.coach_id ||
-            other.day_of_week !==
-              item.day_of_week ||
-            other.timezone !==
-              item.timezone ||
-            other.status !==
-              'active'
-          ) {
-            return false
-          }
-
-          return (
-            other.start_time <
-              item.end_time &&
-            other.end_time >
-              item.start_time
-          )
-        })
-
-      if (conflict) {
-        setError(
-          'Cannot activate this availability because it overlaps another active availability.'
-        )
-        return
+    const { error } = await supabase.rpc(
+      'admin_update_coach_availability',
+      {
+        p_id: item.id,
+        p_coach_id: item.coach_id,
+        p_day_of_week: Number(item.day_of_week),
+        p_start_time: item.start_time,
+        p_end_time: item.end_time,
+        p_timezone: item.timezone,
+        p_status: nextStatus,
       }
-    }
+    )
 
-    const {
-      error: updateError,
-    } = await supabase
-      .from('coach_availability')
-      .update({
-        status: nextStatus,
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq('id', item.id)
-
-    if (updateError) {
-      setError(
-        updateError.message
-      )
+    if (error) {
+      setError(error.message)
       return
     }
 
-    setMessage(
+    setSuccess(
       nextStatus === 'active'
-        ? 'Availability activated.'
-        : 'Availability deactivated.'
+        ? 'Availability activated successfully.'
+        : 'Availability deactivated successfully.'
     )
 
     await loadData()
   }
 
-  async function removeAvailability(
-    item
-  ) {
+  async function handleRemove(item) {
+    const coachName = getCoachName(item)
+    const day = getDayLabel(item.day_of_week)
+
+    const confirmed = window.confirm(
+      `Remove ${coachName}'s ${day} ${item.start_time.slice(
+        0,
+        5
+      )}-${item.end_time.slice(0, 5)} availability?`
+    )
+
+    if (!confirmed) return
+
     setError('')
-    setMessage('')
+    setSuccess('')
+    setRemovingId(item.id)
 
-    const confirmed =
-      window.confirm(
-        `Remove ${getCoachName(
-          item.coaches
-        )}'s ${getDayLabel(
-          item.day_of_week
-        )} availability?`
-      )
-
-    if (!confirmed) {
-      return
-    }
-
-    const {
-      error: deleteError,
-    } = await supabase
-      .from('coach_availability')
-      .delete()
-      .eq('id', item.id)
-
-    if (deleteError) {
-      setError(
-        deleteError.message
-      )
-      return
-    }
-
-    setMessage(
-      'Availability removed successfully.'
+    const { error } = await supabase.rpc(
+      'admin_delete_coach_availability',
+      {
+        p_id: item.id,
+      }
     )
+
+    setRemovingId(null)
+
+    if (error) {
+      setError(error.message)
+      return
+    }
+
+    setSuccess('Availability removed successfully.')
 
     await loadData()
   }
 
-  const filteredAvailability =
-    availability.filter((item) => {
-      const name =
-        getCoachName(item.coaches)
+  const filteredAvailability = availability.filter((item) => {
+    const coachName = getCoachName(item).toLowerCase()
+    const matchesSearch = coachName.includes(search.toLowerCase())
 
-      const matchesSearch =
-        name
-          .toLowerCase()
-          .includes(
-            search.toLowerCase()
-          )
+    const matchesStatus =
+      statusFilter === 'all' ||
+      item.status === statusFilter
 
-      const matchesStatus =
-        statusFilter === 'all' ||
-        item.status ===
-          statusFilter
-
-      return (
-        matchesSearch &&
-        matchesStatus
-      )
-    })
+    return matchesSearch && matchesStatus
+  })
 
   if (loading) {
     return (
       <div className="academy-app">
         <AcademyHeader />
-
-        <div className="page-state">
-          Loading availability...
-        </div>
-      </div>
-    )
-  }
-
-  if (error && !showForm) {
-    return (
-      <div className="academy-app">
-        <AcademyHeader />
-
-        <main className="academy-main">
-          <div className="error-page">
-            <h1>
-              Chessnuts Academy
-            </h1>
-
-            <p>{error}</p>
-          </div>
-        </main>
+        <div className="page-state">Loading availability...</div>
       </div>
     )
   }
@@ -555,26 +374,26 @@ function Availability() {
       <main className="academy-main">
         <div className="page-header">
           <div className="page-header-copy">
-            <h1>
-              Availability
-            </h1>
-
-            <p>
-              Manage coach weekly availability
-            </p>
+            <h1>Availability</h1>
+            <p>Manage recurring coach availability</p>
           </div>
 
-          <button
-            className="btn btn-primary"
-            onClick={openAddForm}
-          >
-            + Add Availability
-          </button>
+          {!showForm && (
+            <button
+              className="btn btn-primary"
+              onClick={openAddForm}
+            >
+              + Add Availability
+            </button>
+          )}
         </div>
 
         <div className="schedule-subnav">
           <button
             className="schedule-subnav-active"
+            onClick={() => {
+              window.location.href = '/schedule/availability'
+            }}
           >
             Availability
           </button>
@@ -594,173 +413,8 @@ function Availability() {
           </button>
         </div>
 
-        {message && (
-          <div className="success-card">
-            {message}
-          </div>
-        )}
-
-        <div className="students-toolbar">
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Search coaches..."
-            value={search}
-            onChange={(e) =>
-              setSearch(
-                e.target.value
-              )
-            }
-          />
-
-          <select
-            className="form-select schedule-status-filter"
-            value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(
-                e.target.value
-              )
-            }
-          >
-            <option value="all">
-              All Status
-            </option>
-
-            <option value="active">
-              Active
-            </option>
-
-            <option value="inactive">
-              Inactive
-            </option>
-          </select>
-        </div>
-
-        <div className="card table-card">
-          {filteredAvailability.length ===
-          0 ? (
-            <div className="empty-state">
-              {search
-                ? 'No availability matches your search.'
-                : 'No availability found.'}
-            </div>
-          ) : (
-            <div className="table-scroll">
-              <table className="students-table">
-                <thead>
-                  <tr>
-                    <th>Coach</th>
-                    <th>Day</th>
-                    <th>Time</th>
-                    <th>Timezone</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredAvailability.map(
-                    (item) => {
-                      const status =
-                        item.status ||
-                        'unknown'
-
-                      return (
-                        <tr
-                          key={item.id}
-                        >
-                          <td>
-                            {getCoachName(
-                              item.coaches
-                            )}
-                          </td>
-
-                          <td>
-                            {getDayLabel(
-                              item.day_of_week
-                            )}
-                          </td>
-
-                          <td>
-                            {formatTime(
-                              item.start_time
-                            )}
-                            {' – '}
-                            {formatTime(
-                              item.end_time
-                            )}
-                          </td>
-
-                          <td>
-                            {item.timezone}
-                          </td>
-
-                          <td>
-                            <span
-                              className={
-                                `status-badge ${
-                                  status ===
-                                  'active'
-                                    ? 'status-active'
-                                    : 'status-inactive'
-                                }`
-                              }
-                            >
-                              {status}
-                            </span>
-                          </td>
-
-                          <td>
-                            <div className="schedule-row-actions">
-                              <button
-                                className="schedule-row-button"
-                                onClick={() =>
-                                  openEditForm(
-                                    item
-                                  )
-                                }
-                              >
-                                Edit
-                              </button>
-
-                              <button
-                                className="schedule-row-button"
-                                onClick={() =>
-                                  toggleStatus(
-                                    item
-                                  )
-                                }
-                              >
-                                {status ===
-                                'active'
-                                  ? 'Deactivate'
-                                  : 'Activate'}
-                              </button>
-
-                              <button
-                                className="schedule-row-button schedule-row-danger"
-                                onClick={() =>
-                                  removeAvailability(
-                                    item
-                                  )
-                                }
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    }
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
         {showForm && (
-          <div className="schedule-form-card">
+          <div className="card schedule-form-card">
             <div className="form-header">
               <div>
                 <h2>
@@ -770,29 +424,13 @@ function Availability() {
                 </h2>
 
                 <p>
-                  Set a recurring weekly
-                  availability for a coach.
+                  Set a recurring weekly time range when a coach is
+                  available for scheduling.
                 </p>
               </div>
-
-              <button
-                className="btn btn-ghost"
-                onClick={closeForm}
-                disabled={saving}
-              >
-                Close
-              </button>
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-            >
-              {error && (
-                <div className="error-box">
-                  {error}
-                </div>
-              )}
-
+            <form onSubmit={handleSubmit}>
               <div className="schedule-form-grid">
                 <div className="form-group">
                   <label className="form-label">
@@ -800,37 +438,25 @@ function Availability() {
                   </label>
 
                   <select
-                    name="coachId"
                     className="form-select"
-                    value={
-                      form.coachId
+                    value={form.coachId}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        coachId: event.target.value,
+                      })
                     }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={saving}
-                    required
                   >
                     <option value="">
                       Select coach
                     </option>
 
-                    {coaches.map(
-                      (coach) => (
-                        <option
-                          key={
-                            coach.id
-                          }
-                          value={
-                            coach.id
-                          }
-                        >
-                          {getCoachName(
-                            coach
-                          )}
-                        </option>
-                      )
-                    )}
+                    {coaches.map((coach) => (
+                      <option key={coach.id} value={coach.id}>
+                        {coach.profiles?.display_name ||
+                          'Unnamed Coach'}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -840,71 +466,59 @@ function Availability() {
                   </label>
 
                   <select
-                    name="dayOfWeek"
                     className="form-select"
-                    value={
-                      form.dayOfWeek
+                    value={form.dayOfWeek}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        dayOfWeek: event.target.value,
+                      })
                     }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={saving}
-                    required
                   >
-                    {DAYS.map(
-                      (day) => (
-                        <option
-                          key={
-                            day.value
-                          }
-                          value={
-                            day.value
-                          }
-                        >
-                          {day.label}
-                        </option>
-                      )
-                    )}
+                    {DAYS.map((day) => (
+                      <option
+                        key={day.value}
+                        value={day.value}
+                      >
+                        {day.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">
-                    Start time
+                    Start Time
                   </label>
 
                   <input
                     className="form-input"
                     type="time"
-                    name="startTime"
-                    value={
-                      form.startTime
+                    value={form.startTime}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        startTime: event.target.value,
+                      })
                     }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={saving}
-                    required
                   />
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">
-                    End time
+                    End Time
                   </label>
 
                   <input
                     className="form-input"
                     type="time"
-                    name="endTime"
-                    value={
-                      form.endTime
+                    value={form.endTime}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        endTime: event.target.value,
+                      })
                     }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={saving}
-                    required
                   />
                 </div>
 
@@ -913,19 +527,25 @@ function Availability() {
                     Timezone
                   </label>
 
-                  <input
-                    className="form-input"
-                    type="text"
-                    name="timezone"
-                    value={
-                      form.timezone
+                  <select
+                    className="form-select"
+                    value={form.timezone}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        timezone: event.target.value,
+                      })
                     }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={saving}
-                    required
-                  />
+                  >
+                    {TIMEZONES.map((timezone) => (
+                      <option
+                        key={timezone}
+                        value={timezone}
+                      >
+                        {timezone}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-group">
@@ -935,14 +555,13 @@ function Availability() {
 
                   <select
                     className="form-select"
-                    name="status"
-                    value={
-                      form.status
+                    value={form.status}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        status: event.target.value,
+                      })
                     }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={saving}
                   >
                     <option value="active">
                       Active
@@ -954,6 +573,12 @@ function Availability() {
                   </select>
                 </div>
               </div>
+
+              {error && (
+                <div className="error-box">
+                  {error}
+                </div>
+              )}
 
               <div className="form-actions">
                 <button
@@ -974,11 +599,161 @@ function Availability() {
                     ? 'Saving...'
                     : editingAvailability
                       ? 'Save Changes'
-                      : 'Add Availability'}
+                      : 'Create Availability'}
                 </button>
               </div>
             </form>
           </div>
+        )}
+
+        {!showForm && (
+          <>
+            {success && (
+              <div className="success-card">
+                {success}
+              </div>
+            )}
+
+            {error && (
+              <div className="error-box">
+                {error}
+              </div>
+            )}
+
+            <div className="students-toolbar">
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Search coaches..."
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+              />
+
+              <select
+                className="form-select schedule-status-filter"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value)
+                }
+              >
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
+            <div className="card table-card">
+              {filteredAvailability.length === 0 ? (
+                <div className="empty-state">
+                  {search || statusFilter !== 'all'
+                    ? 'No availability matches your search.'
+                    : 'No availability found.'}
+                </div>
+              ) : (
+                <div className="table-scroll">
+                  <table className="students-table">
+                    <thead>
+                      <tr>
+                        <th>Coach</th>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Timezone</th>
+                        <th>Status</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {filteredAvailability.map((item) => {
+                        const active =
+                          item.status === 'active'
+
+                        return (
+                          <tr key={item.id}>
+                            <td>
+                              <button
+                                className="student-name-button"
+                                onClick={() =>
+                                  openEditForm(item)
+                                }
+                              >
+                                {getCoachName(item)}
+                              </button>
+                            </td>
+
+                            <td>
+                              {getDayLabel(item.day_of_week)}
+                            </td>
+
+                            <td>
+                              {item.start_time?.slice(0, 5)}–
+                              {item.end_time?.slice(0, 5)}
+                            </td>
+
+                            <td>
+                              {item.timezone}
+                            </td>
+
+                            <td>
+                              <span
+                                className={`status-badge ${
+                                  active
+                                    ? 'status-active'
+                                    : 'status-inactive'
+                                }`}
+                              >
+                                {item.status}
+                              </span>
+                            </td>
+
+                            <td>
+                              <div className="schedule-row-actions">
+                                <button
+                                  className="schedule-row-button"
+                                  onClick={() =>
+                                    openEditForm(item)
+                                  }
+                                >
+                                  Edit
+                                </button>
+
+                                <button
+                                  className="schedule-row-button"
+                                  onClick={() =>
+                                    handleToggleStatus(item)
+                                  }
+                                >
+                                  {active
+                                    ? 'Deactivate'
+                                    : 'Activate'}
+                                </button>
+
+                                <button
+                                  className="schedule-row-button schedule-row-danger"
+                                  onClick={() =>
+                                    handleRemove(item)
+                                  }
+                                  disabled={
+                                    removingId === item.id
+                                  }
+                                >
+                                  {removingId === item.id
+                                    ? 'Removing...'
+                                    : 'Remove'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </main>
     </div>
