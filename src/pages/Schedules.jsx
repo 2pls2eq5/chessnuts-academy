@@ -30,7 +30,7 @@ function Schedule() {
         { count: availabilityCountData, error: availabilityError },
       ] = await Promise.all([
         supabase
-          .from('student_schedules')
+          .from('student_s')
           .select(`
             id,
             student_id,
@@ -55,7 +55,7 @@ function Schedule() {
           .order('start_time', { ascending: true }),
 
         supabase
-          .from('student_schedule_requests')
+          .from('student__requests')
           .select('id', {
             count: 'exact',
             head: true,
@@ -71,8 +71,8 @@ function Schedule() {
           .eq('status', 'active'),
       ])
 
-      if (scheduleError) {
-        setError(scheduleError.message)
+      if (Error) {
+        setError(Error.message)
         setLoading(false)
         return
       }
@@ -89,7 +89,7 @@ function Schedule() {
         return
       }
 
-      setSchedules(scheduleData || [])
+      sets(Data || [])
       setRequestCount(requestCountData || 0)
       setAvailabilityCount(availabilityCountData || 0)
 
@@ -149,7 +149,7 @@ function Schedule() {
       <main className="academy-main">
         <div className="page-header">
           <div className="page-header-copy">
-            <h1>Schedule</h1>
+            <h1>Schedules</h1>
 
             <p>
               Manage and view the Academy teaching schedule
