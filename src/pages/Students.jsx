@@ -21,7 +21,6 @@ function Students() {
         .from('students')
         .select(`
           id,
-          date_of_birth,
           join_date,
           status,
           level,
