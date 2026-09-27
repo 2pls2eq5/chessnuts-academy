@@ -1,56 +1,52 @@
-import { useLocation } from 'react-router-dom'
-
 function AcademyHeader() {
-  const location = useLocation()
+  const path = window.location.pathname
 
   const navItems = [
     {
       label: 'Dashboard',
       path: '/',
-      active: location.pathname === '/',
+      active: path === '/',
     },
     {
       label: 'Students',
       path: '/students',
-      active: location.pathname.startsWith('/students'),
+      active: path.startsWith('/students'),
     },
     {
       label: 'Coaches',
-      path: '/coaches',
       comingSoon: true,
     },
     {
       label: 'Parents',
-      path: '/parents',
       comingSoon: true,
     },
     {
       label: 'Schedule',
-      path: '/schedule',
       comingSoon: true,
     },
     {
       label: 'Payments',
-      path: '/payments',
       comingSoon: true,
     },
   ]
 
   return (
     <header className="academy-header">
-      <div className="academy-header-inner">
-        <div className="academy-brand">
-          <div className="academy-brand-mark">
-            C
-          </div>
-
-          <div className="academy-brand-text">
-            <div className="academy-brand-title">
-              Chessnuts Academy
+      <div className="academy-header-top">
+        <div className="academy-header-inner">
+          <div className="academy-brand">
+            <div className="academy-brand-mark">
+              C
             </div>
 
-            <div className="academy-brand-subtitle">
-              Admin Workspace
+            <div className="academy-brand-text">
+              <div className="academy-brand-title">
+                Chessnuts Academy
+              </div>
+
+              <div className="academy-brand-subtitle">
+                Admin Workspace
+              </div>
             </div>
           </div>
         </div>
