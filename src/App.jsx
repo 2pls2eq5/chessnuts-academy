@@ -12,6 +12,7 @@ import CoachDetail from './pages/CoachDetail'
 import AddCoach from './pages/AddCoach'
 
 import Parents from './pages/Parents'
+import ParentDetail from './pages/ParentDetail'
 import AddParent from './pages/AddParent'
 
 function App() {
@@ -257,6 +258,21 @@ function App() {
   if (path === '/parents/add') {
     return (
       <AddParent
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
+  if (
+    path.startsWith('/parents/')
+  ) {
+    const parentId =
+      path.split('/')[2]
+
+    return (
+      <ParentDetail
+        parentId={parentId}
         user={user}
         profile={profile}
       />
