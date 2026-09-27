@@ -789,9 +789,13 @@ function StudentDetail({ studentId }) {
                 gridTemplateColumns:
                   'repeat(2, minmax(0, 1fr))',
                 gap: '24px',
-                marginTop: '24px',
+                marginTop: '32px',
               }}
             >
+              {/* =====================================================
+                  PARENTS
+              ===================================================== */}
+
               <section className="card detail-card">
                 <div className="detail-card-header">
                   <h2 className="detail-card-title">
@@ -970,42 +974,64 @@ function StudentDetail({ studentId }) {
                   </div>
                 ) : (
                   <div className="detail-grid">
-  {parents.map((parent) => (
-    <div key={parent.id}>
-                        <div className="detail-label">
-                          Parent
-                        </div>
-
-                        <div className="detail-value detail-value-strong">
-                          {parent.profiles
-                            ?.display_name ||
-                            'Unnamed Parent'}
-                        </div>
-
-                        {parent.profiles
-                          ?.username && (
-                          <div className="detail-value">
-                            @{parent.profiles.username}
+                    {parents.map((parent) => (
+                      <div
+                        key={parent.id}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '26px',
+                        }}
+                      >
+                        <div>
+                          <div className="detail-label">
+                            Parent
                           </div>
-                        )}
 
-                        <div className="detail-label">
-                          Relationship
+                          <div className="detail-value detail-value-strong">
+                            {parent.profiles
+                              ?.display_name ||
+                              'Unnamed Parent'}
+                          </div>
+
+                          {parent.profiles
+                            ?.username && (
+                            <div
+                              className="detail-value"
+                              style={{
+                                marginTop: '6px',
+                              }}
+                            >
+                              @
+                              {
+                                parent.profiles
+                                  .username
+                              }
+                            </div>
+                          )}
                         </div>
 
-                        <div className="detail-value">
-                          {parent.relationship ||
-                            '—'}
+                        <div>
+                          <div className="detail-label">
+                            Relationship
+                          </div>
+
+                          <div className="detail-value">
+                            {parent.relationship ||
+                              '—'}
+                          </div>
                         </div>
 
-                        <div className="detail-label">
-                          Primary
-                        </div>
+                        <div>
+                          <div className="detail-label">
+                            Primary
+                          </div>
 
-                        <div className="detail-value">
-                          {parent.is_primary
-                            ? 'Yes'
-                            : 'No'}
+                          <div className="detail-value">
+                            {parent.is_primary
+                              ? 'Yes'
+                              : 'No'}
+                          </div>
                         </div>
 
                         <button
@@ -1026,6 +1052,10 @@ function StudentDetail({ studentId }) {
                   </div>
                 )}
               </section>
+
+              {/* =====================================================
+                  COACHES
+              ===================================================== */}
 
               <section className="card detail-card">
                 <div className="detail-card-header">
@@ -1136,32 +1166,52 @@ function StudentDetail({ studentId }) {
                 ) : (
                   <div className="detail-grid">
                     {coaches.map((coach) => (
-                      <div key={coach.id}>
-                        <div className="detail-label">
-                          Coach
-                        </div>
-
-                        <div className="detail-value detail-value-strong">
-                          {coach.profiles
-                            ?.display_name ||
-                            'Unnamed Coach'}
-                        </div>
-
-                        {coach.profiles
-                          ?.username && (
-                          <div className="detail-value">
-                            @{coach.profiles.username}
+                      <div
+                        key={coach.id}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '26px',
+                        }}
+                      >
+                        <div>
+                          <div className="detail-label">
+                            Coach
                           </div>
-                        )}
 
-                        <div className="detail-label">
-                          Started
+                          <div className="detail-value detail-value-strong">
+                            {coach.profiles
+                              ?.display_name ||
+                              'Unnamed Coach'}
+                          </div>
+
+                          {coach.profiles
+                            ?.username && (
+                            <div
+                              className="detail-value"
+                              style={{
+                                marginTop: '6px',
+                              }}
+                            >
+                              @
+                              {
+                                coach.profiles
+                                  .username
+                              }
+                            </div>
+                          )}
                         </div>
 
-                        <div className="detail-value">
-                          {formatDate(
-                            coach.started_at
-                          )}
+                        <div>
+                          <div className="detail-label">
+                            Started
+                          </div>
+
+                          <div className="detail-value">
+                            {formatDate(
+                              coach.started_at
+                            )}
+                          </div>
                         </div>
 
                         <button
