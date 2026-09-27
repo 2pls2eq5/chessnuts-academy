@@ -16,39 +16,54 @@ const DEFAULT_TIMEZONE = 'Asia/Jakarta'
 
 function getDayLabel(day) {
   return (
-    DAYS.find((item) => item.value === day)?.label ||
-    day
+    DAYS.find((item) => item.value === day)
+      ?.label || day
   )
 }
 
 function formatTime(time) {
-  if (!time) return ''
-  return time.slice(0, 5)
+  return time
+    ? time.slice(0, 5)
+    : ''
 }
 
 function getCoachName(coach) {
   return (
     coach?.profiles?.display_name ||
-    'Unknown Coach'
+    'Unnamed Coach'
   )
 }
 
-function Availability({ user, profile }) {
-  const [availability, setAvailability] = useState([])
-  const [coaches, setCoaches] = useState([])
+function Availability() {
+  const [loading, setLoading] =
+    useState(true)
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [availability, setAvailability] =
+    useState([])
 
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
+  const [coaches, setCoaches] =
+    useState([])
 
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [search, setSearch] =
+    useState('')
 
-  const [showModal, setShowModal] = useState(false)
+  const [statusFilter, setStatusFilter] =
+    useState('all')
+
+  const [error, setError] =
+    useState('')
+
+  const [message, setMessage] =
+    useState('')
+
+  const [showForm, setShowForm] =
+    useState(false)
+
   const [editingAvailability, setEditingAvailability] =
     useState(null)
+
+  const [saving, setSaving] =
+    useState(false)
 
   const [form, setForm] = useState({
     coachId: '',
@@ -81,8 +96,6 @@ function Availability({ user, profile }) {
           end_time,
           timezone,
           status,
-          created_at,
-          updated_at,
           coaches (
             id,
             profile_id,
@@ -110,46 +123,46 @@ function Availability({ user, profile }) {
     ])
 
     if (availabilityResult.error) {
-      setError(availabilityResult.error.message)
+      setError(
+        availabilityResult.error.message
+      )
       setLoading(false)
       return
     }
 
     if (coachesResult.error) {
-      setError(coachesResult.error.message)
+      setError(
+        coachesResult.error.message
+      )
       setLoading(false)
       return
     }
 
-    const coachData =
-      coachesResult.data || []
-
-    coachData.sort((a, b) =>
-      getCoachName(a).localeCompare(
-        getCoachName(b)
-      )
-    )
+    const sortedCoaches =
+      [...(coachesResult.data || [])]
+        .sort((a, b) =>
+          getCoachName(a).localeCompare(
+            getCoachName(b)
+          )
+        )
 
     setAvailability(
       availabilityResult.data || []
     )
 
-    setCoaches(coachData)
+    setCoaches(sortedCoaches)
+
     setLoading(false)
   }
 
-  function resetMessages() {
+  function openAddForm() {
     setError('')
     setMessage('')
-  }
-
-  function openAddModal() {
-    resetMessages()
-
     setEditingAvailability(null)
 
     setForm({
-      coachId: coaches[0]?.id || '',
+      coachId:
+        coaches[0]?.id || '',
       dayOfWeek: 1,
       startTime: '09:00',
       endTime: '10:00',
@@ -157,38 +170,40 @@ function Availability({ user, profile }) {
       status: 'active',
     })
 
-    setShowModal(true)
+    setShowForm(true)
   }
 
-  function openEditModal(item) {
-    resetMessages()
-
+  function openEditForm(item) {
+    setError('')
+    setMessage('')
     setEditingAvailability(item)
 
     setForm({
       coachId: item.coach_id,
       dayOfWeek: item.day_of_week,
-      startTime: formatTime(item.start_time),
-      endTime: formatTime(item.end_time),
+      startTime:
+        formatTime(item.start_time),
+      endTime:
+        formatTime(item.end_time),
       timezone: item.timezone,
       status: item.status,
     })
 
-    setShowModal(true)
+    setShowForm(true)
   }
 
-  function closeModal() {
+  function closeForm() {
     if (saving) return
 
-    setShowModal(false)
+    setShowForm(false)
     setEditingAvailability(null)
   }
 
-  function handleChange(event) {
+  function handleChange(e) {
     const {
       name,
       value,
-    } = event.target
+    } = e.target
 
     setForm((current) => ({
       ...current,
@@ -204,11 +219,17 @@ function Availability({ user, profile }) {
       return 'Please select a coach.'
     }
 
-    if (!form.startTime || !form.endTime) {
+    if (
+      !form.startTime ||
+      !form.endTime
+    ) {
       return 'Start and end time are required.'
     }
 
-    if (form.startTime >= form.endTime) {
+    if (
+      form.startTime >=
+      form.endTime
+    ) {
       return 'Start time must be before end time.'
     }
 
@@ -217,26 +238,30 @@ function Availability({ user, profile }) {
     }
 
     /*
-     * Availability uses [start, end).
+     * [start, end)
      *
      * 19:00–20:00
      * 20:00–21:00
      *
-     * are allowed because they only touch.
+     * are allowed.
      */
     const conflict =
       availability.find((item) => {
         if (
           editingAvailability &&
-          item.id === editingAvailability.id
+          item.id ===
+            editingAvailability.id
         ) {
           return false
         }
 
         if (
-          item.coach_id !== form.coachId ||
-          item.day_of_week !== form.dayOfWeek ||
-          item.timezone !== form.timezone ||
+          item.coach_id !==
+            form.coachId ||
+          item.day_of_week !==
+            form.dayOfWeek ||
+          item.timezone !==
+            form.timezone ||
           item.status !== 'active' ||
           form.status !== 'active'
         ) {
@@ -244,24 +269,27 @@ function Availability({ user, profile }) {
         }
 
         return (
-          item.start_time < form.endTime &&
-          item.end_time > form.startTime
+          item.start_time <
+            form.endTime &&
+          item.end_time >
+            form.startTime
         )
       })
 
     if (conflict) {
       return (
-        'This coach already has an overlapping active availability on this day and timezone.'
+        'This availability overlaps another active availability for this coach.'
       )
     }
 
     return ''
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault()
+  async function handleSubmit(e) {
+    e.preventDefault()
 
-    resetMessages()
+    setError('')
+    setMessage('')
 
     const validationError =
       validateForm()
@@ -279,12 +307,18 @@ function Availability({ user, profile }) {
       } = await supabase
         .from('coach_availability')
         .update({
-          coach_id: form.coachId,
-          day_of_week: form.dayOfWeek,
-          start_time: form.startTime,
-          end_time: form.endTime,
-          timezone: form.timezone.trim(),
-          status: form.status,
+          coach_id:
+            form.coachId,
+          day_of_week:
+            form.dayOfWeek,
+          start_time:
+            form.startTime,
+          end_time:
+            form.endTime,
+          timezone:
+            form.timezone.trim(),
+          status:
+            form.status,
           updated_at:
             new Date().toISOString(),
         })
@@ -294,7 +328,9 @@ function Availability({ user, profile }) {
         )
 
       if (updateError) {
-        setError(updateError.message)
+        setError(
+          updateError.message
+        )
         setSaving(false)
         return
       }
@@ -308,16 +344,24 @@ function Availability({ user, profile }) {
       } = await supabase
         .from('coach_availability')
         .insert({
-          coach_id: form.coachId,
-          day_of_week: form.dayOfWeek,
-          start_time: form.startTime,
-          end_time: form.endTime,
-          timezone: form.timezone.trim(),
-          status: form.status,
+          coach_id:
+            form.coachId,
+          day_of_week:
+            form.dayOfWeek,
+          start_time:
+            form.startTime,
+          end_time:
+            form.endTime,
+          timezone:
+            form.timezone.trim(),
+          status:
+            form.status,
         })
 
       if (insertError) {
-        setError(insertError.message)
+        setError(
+          insertError.message
+        )
         setSaving(false)
         return
       }
@@ -328,38 +372,30 @@ function Availability({ user, profile }) {
     }
 
     setSaving(false)
-    setShowModal(false)
+    setShowForm(false)
     setEditingAvailability(null)
 
     await loadData()
   }
 
-  async function handleStatusChange(
-    item,
-    nextStatus
-  ) {
-    resetMessages()
+  async function toggleStatus(item) {
+    setError('')
+    setMessage('')
 
-    const isActivating =
-      nextStatus === 'active'
-
-    const confirmed =
-      window.confirm(
-        isActivating
-          ? 'Activate this availability?'
-          : 'Deactivate this availability?'
-      )
-
-    if (!confirmed) return
+    const nextStatus =
+      item.status === 'active'
+        ? 'inactive'
+        : 'active'
 
     /*
-     * When activating an inactive record,
-     * check overlap again.
+     * Re-check overlap when activating.
      */
-    if (isActivating) {
+    if (nextStatus === 'active') {
       const conflict =
         availability.find((other) => {
-          if (other.id === item.id) {
+          if (
+            other.id === item.id
+          ) {
             return false
           }
 
@@ -370,7 +406,8 @@ function Availability({ user, profile }) {
               item.day_of_week ||
             other.timezone !==
               item.timezone ||
-            other.status !== 'active'
+            other.status !==
+              'active'
           ) {
             return false
           }
@@ -403,12 +440,14 @@ function Availability({ user, profile }) {
       .eq('id', item.id)
 
     if (updateError) {
-      setError(updateError.message)
+      setError(
+        updateError.message
+      )
       return
     }
 
     setMessage(
-      isActivating
+      nextStatus === 'active'
         ? 'Availability activated.'
         : 'Availability deactivated.'
     )
@@ -416,8 +455,11 @@ function Availability({ user, profile }) {
     await loadData()
   }
 
-  async function handleRemove(item) {
-    resetMessages()
+  async function removeAvailability(
+    item
+  ) {
+    setError('')
+    setMessage('')
 
     const confirmed =
       window.confirm(
@@ -425,10 +467,12 @@ function Availability({ user, profile }) {
           item.coaches
         )}'s ${getDayLabel(
           item.day_of_week
-        )} availability permanently?`
+        )} availability?`
       )
 
-    if (!confirmed) return
+    if (!confirmed) {
+      return
+    }
 
     const {
       error: deleteError,
@@ -438,7 +482,9 @@ function Availability({ user, profile }) {
       .eq('id', item.id)
 
     if (deleteError) {
-      setError(deleteError.message)
+      setError(
+        deleteError.message
+      )
       return
     }
 
@@ -451,11 +497,11 @@ function Availability({ user, profile }) {
 
   const filteredAvailability =
     availability.filter((item) => {
-      const coachName =
+      const name =
         getCoachName(item.coaches)
 
       const matchesSearch =
-        coachName
+        name
           .toLowerCase()
           .includes(
             search.toLowerCase()
@@ -463,7 +509,8 @@ function Availability({ user, profile }) {
 
       const matchesStatus =
         statusFilter === 'all' ||
-        item.status === statusFilter
+        item.status ===
+          statusFilter
 
       return (
         matchesSearch &&
@@ -483,6 +530,24 @@ function Availability({ user, profile }) {
     )
   }
 
+  if (error && !showForm) {
+    return (
+      <div className="academy-app">
+        <AcademyHeader />
+
+        <main className="academy-main">
+          <div className="error-page">
+            <h1>
+              Chessnuts Academy
+            </h1>
+
+            <p>{error}</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="academy-app">
       <AcademyHeader />
@@ -490,38 +555,39 @@ function Availability({ user, profile }) {
       <main className="academy-main">
         <div className="page-header">
           <div className="page-header-copy">
-            <h1>Coach Availability</h1>
+            <h1>
+              Availability
+            </h1>
 
-            <div className="page-header-welcome">
-              Manage recurring weekly availability
-              for coaches.
-            </div>
+            <p>
+              Manage coach weekly availability
+            </p>
           </div>
 
           <button
-            className="btn btn-primary schedule-add-button"
-            onClick={openAddModal}
+            className="btn btn-primary"
+            onClick={openAddForm}
           >
             + Add Availability
           </button>
         </div>
 
-        <div className="schedule-nav">
+        <div className="schedule-subnav">
           <button
-            className="schedule-nav-active"
+            className="schedule-subnav-active"
           >
             Availability
           </button>
 
           <button
-            className="schedule-nav-disabled"
+            className="schedule-subnav-disabled"
             disabled
           >
             Requests
           </button>
 
           <button
-            className="schedule-nav-disabled"
+            className="schedule-subnav-disabled"
             disabled
           >
             Schedules
@@ -529,60 +595,54 @@ function Availability({ user, profile }) {
         </div>
 
         {message && (
-          <div className="schedule-message">
+          <div className="success-card">
             {message}
           </div>
         )}
 
-        {error && (
-          <div className="schedule-error">
-            {error}
-          </div>
-        )}
+        <div className="students-toolbar">
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search coaches..."
+            value={search}
+            onChange={(e) =>
+              setSearch(
+                e.target.value
+              )
+            }
+          />
+
+          <select
+            className="form-select schedule-status-filter"
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(
+                e.target.value
+              )
+            }
+          >
+            <option value="all">
+              All Status
+            </option>
+
+            <option value="active">
+              Active
+            </option>
+
+            <option value="inactive">
+              Inactive
+            </option>
+          </select>
+        </div>
 
         <div className="card table-card">
-          <div className="schedule-toolbar">
-            <div className="schedule-toolbar-left">
-              <input
-                type="text"
-                className="schedule-search"
-                placeholder="Search coach..."
-                value={search}
-                onChange={(event) =>
-                  setSearch(
-                    event.target.value
-                  )
-                }
-              />
-
-              <select
-                className="schedule-filter"
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(
-                    event.target.value
-                  )
-                }
-              >
-                <option value="all">
-                  All Status
-                </option>
-
-                <option value="active">
-                  Active
-                </option>
-
-                <option value="inactive">
-                  Inactive
-                </option>
-              </select>
-            </div>
-          </div>
-
           {filteredAvailability.length ===
           0 ? (
             <div className="empty-state">
-              No availability found.
+              {search
+                ? 'No availability matches your search.'
+                : 'No availability found.'}
             </div>
           ) : (
             <div className="table-scroll">
@@ -600,124 +660,108 @@ function Availability({ user, profile }) {
 
                 <tbody>
                   {filteredAvailability.map(
-                    (item) => (
-                      <tr key={item.id}>
-                        <td>
-                          <div className="student-name-button">
+                    (item) => {
+                      const status =
+                        item.status ||
+                        'unknown'
+
+                      return (
+                        <tr
+                          key={item.id}
+                        >
+                          <td>
                             {getCoachName(
                               item.coaches
                             )}
-                          </div>
-                        </td>
+                          </td>
 
-                        <td>
-                          {getDayLabel(
-                            item.day_of_week
-                          )}
-                        </td>
+                          <td>
+                            {getDayLabel(
+                              item.day_of_week
+                            )}
+                          </td>
 
-                        <td>
-                          {formatTime(
-                            item.start_time
-                          )}
-                          {'–'}
-                          {formatTime(
-                            item.end_time
-                          )}
-                        </td>
+                          <td>
+                            {formatTime(
+                              item.start_time
+                            )}
+                            {' – '}
+                            {formatTime(
+                              item.end_time
+                            )}
+                          </td>
 
-                        <td>
-                          {item.timezone}
-                        </td>
+                          <td>
+                            {item.timezone}
+                          </td>
 
-                        <td>
-                          <span
-                            className={
-                              item.status ===
-                              'active'
-                                ? 'status-badge status-active'
-                                : 'status-badge status-inactive'
-                            }
-                          >
-                            {item.status ===
-                            'active'
-                              ? 'Active'
-                              : 'Inactive'}
-                          </span>
-                        </td>
-
-                        <td>
-                          <div className="schedule-actions">
-                            <button
-                              className="schedule-action"
-                              onClick={() =>
-                                openEditModal(
-                                  item
-                                )
+                          <td>
+                            <span
+                              className={
+                                `status-badge ${
+                                  status ===
+                                  'active'
+                                    ? 'status-active'
+                                    : 'status-inactive'
+                                }`
                               }
                             >
-                              Edit
-                            </button>
+                              {status}
+                            </span>
+                          </td>
 
-                            <button
-                              className="schedule-action"
-                              onClick={() =>
-                                handleStatusChange(
-                                  item,
-                                  item.status ===
-                                    'active'
-                                    ? 'inactive'
-                                    : 'active'
-                                )
-                              }
-                            >
-                              {item.status ===
-                              'active'
-                                ? 'Deactivate'
-                                : 'Activate'}
-                            </button>
+                          <td>
+                            <div className="schedule-row-actions">
+                              <button
+                                className="schedule-row-button"
+                                onClick={() =>
+                                  openEditForm(
+                                    item
+                                  )
+                                }
+                              >
+                                Edit
+                              </button>
 
-                            <button
-                              className="schedule-action schedule-action-danger"
-                              onClick={() =>
-                                handleRemove(
-                                  item
-                                )
-                              }
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
+                              <button
+                                className="schedule-row-button"
+                                onClick={() =>
+                                  toggleStatus(
+                                    item
+                                  )
+                                }
+                              >
+                                {status ===
+                                'active'
+                                  ? 'Deactivate'
+                                  : 'Activate'}
+                              </button>
+
+                              <button
+                                className="schedule-row-button schedule-row-danger"
+                                onClick={() =>
+                                  removeAvailability(
+                                    item
+                                  )
+                                }
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    }
                   )}
                 </tbody>
               </table>
             </div>
           )}
         </div>
-      </main>
 
-      {showModal && (
-        <div
-          className="schedule-modal-backdrop"
-          onMouseDown={(event) => {
-            if (
-              event.target ===
-              event.currentTarget
-            ) {
-              closeModal()
-            }
-          }}
-        >
-          <div
-            className="schedule-modal"
-            onMouseDown={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className="schedule-modal-header">
+        {showForm && (
+          <div className="schedule-form-card">
+            <div className="form-header">
               <div>
                 <h2>
                   {editingAvailability
@@ -726,187 +770,196 @@ function Availability({ user, profile }) {
                 </h2>
 
                 <p>
-                  Set the coach's recurring
-                  weekly availability.
+                  Set a recurring weekly
+                  availability for a coach.
                 </p>
               </div>
 
               <button
-                className="schedule-modal-close"
-                onClick={closeModal}
+                className="btn btn-ghost"
+                onClick={closeForm}
                 disabled={saving}
-                aria-label="Close"
               >
-                ×
+                Close
               </button>
             </div>
 
             <form
               onSubmit={handleSubmit}
             >
-              <div className="schedule-modal-body">
-                <div className="schedule-form-grid">
-                  <div className="form-group">
-                    <label className="form-label">
-                      Coach
-                    </label>
+              {error && (
+                <div className="error-box">
+                  {error}
+                </div>
+              )}
 
-                    <select
-                      name="coachId"
-                      className="form-select"
-                      value={form.coachId}
-                      onChange={
-                        handleChange
-                      }
-                      disabled={saving}
-                      required
-                    >
-                      <option value="">
-                        Select coach
-                      </option>
+              <div className="schedule-form-grid">
+                <div className="form-group">
+                  <label className="form-label">
+                    Coach
+                  </label>
 
-                      {coaches.map(
-                        (coach) => (
-                          <option
-                            key={coach.id}
-                            value={coach.id}
-                          >
-                            {getCoachName(
-                              coach
-                            )}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
+                  <select
+                    name="coachId"
+                    className="form-select"
+                    value={
+                      form.coachId
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={saving}
+                    required
+                  >
+                    <option value="">
+                      Select coach
+                    </option>
 
-                  <div className="form-group">
-                    <label className="form-label">
-                      Day
-                    </label>
+                    {coaches.map(
+                      (coach) => (
+                        <option
+                          key={
+                            coach.id
+                          }
+                          value={
+                            coach.id
+                          }
+                        >
+                          {getCoachName(
+                            coach
+                          )}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
 
-                    <select
-                      name="dayOfWeek"
-                      className="form-select"
-                      value={
-                        form.dayOfWeek
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={saving}
-                      required
-                    >
-                      {DAYS.map(
-                        (day) => (
-                          <option
-                            key={
-                              day.value
-                            }
-                            value={
-                              day.value
-                            }
-                          >
-                            {day.label}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    Day
+                  </label>
 
-                  <div className="form-group">
-                    <label className="form-label">
-                      Start time
-                    </label>
+                  <select
+                    name="dayOfWeek"
+                    className="form-select"
+                    value={
+                      form.dayOfWeek
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={saving}
+                    required
+                  >
+                    {DAYS.map(
+                      (day) => (
+                        <option
+                          key={
+                            day.value
+                          }
+                          value={
+                            day.value
+                          }
+                        >
+                          {day.label}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
 
-                    <input
-                      type="time"
-                      name="startTime"
-                      className="form-input"
-                      value={
-                        form.startTime
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={saving}
-                      required
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    Start time
+                  </label>
 
-                  <div className="form-group">
-                    <label className="form-label">
-                      End time
-                    </label>
+                  <input
+                    className="form-input"
+                    type="time"
+                    name="startTime"
+                    value={
+                      form.startTime
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={saving}
+                    required
+                  />
+                </div>
 
-                    <input
-                      type="time"
-                      name="endTime"
-                      className="form-input"
-                      value={
-                        form.endTime
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={saving}
-                      required
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    End time
+                  </label>
 
-                  <div className="form-group">
-                    <label className="form-label">
-                      Timezone
-                    </label>
+                  <input
+                    className="form-input"
+                    type="time"
+                    name="endTime"
+                    value={
+                      form.endTime
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={saving}
+                    required
+                  />
+                </div>
 
-                    <input
-                      type="text"
-                      name="timezone"
-                      className="form-input"
-                      value={
-                        form.timezone
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={saving}
-                      required
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    Timezone
+                  </label>
 
-                  <div className="form-group">
-                    <label className="form-label">
-                      Status
-                    </label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    name="timezone"
+                    value={
+                      form.timezone
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={saving}
+                    required
+                  />
+                </div>
 
-                    <select
-                      name="status"
-                      className="form-select"
-                      value={
-                        form.status
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={saving}
-                    >
-                      <option value="active">
-                        Active
-                      </option>
+                <div className="form-group">
+                  <label className="form-label">
+                    Status
+                  </label>
 
-                      <option value="inactive">
-                        Inactive
-                      </option>
-                    </select>
-                  </div>
+                  <select
+                    className="form-select"
+                    name="status"
+                    value={
+                      form.status
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={saving}
+                  >
+                    <option value="active">
+                      Active
+                    </option>
+
+                    <option value="inactive">
+                      Inactive
+                    </option>
+                  </select>
                 </div>
               </div>
 
-              <div className="schedule-modal-actions">
+              <div className="form-actions">
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={closeModal}
+                  onClick={closeForm}
                   disabled={saving}
                 >
                   Cancel
@@ -921,13 +974,13 @@ function Availability({ user, profile }) {
                     ? 'Saving...'
                     : editingAvailability
                       ? 'Save Changes'
-                      : 'Save Availability'}
+                      : 'Add Availability'}
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   )
 }
