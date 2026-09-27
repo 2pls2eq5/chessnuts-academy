@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
   STUDENT_LEVELS,
@@ -7,9 +6,8 @@ import {
 } from '../constants/studentLevels'
 import AcademyHeader from '../components/AcademyHeader'
 
-export default function StudentDetail() {
-  const { id } = useParams()
-  const navigate = useNavigate()
+export default function StudentDetail({ studentId }) {
+  const id = studentId
 
   const [student, setStudent] = useState(null)
   const [parents, setParents] = useState([])
@@ -30,7 +28,10 @@ export default function StudentDetail() {
   const [level, setLevel] = useState('')
   const [status, setStatus] = useState('active')
 
-  // Parent selector
+  // =========================================================
+  // PARENT RELATIONSHIP
+  // =========================================================
+
   const [showParentSelector, setShowParentSelector] =
     useState(false)
 
@@ -46,7 +47,10 @@ export default function StudentDetail() {
   const [relationshipLoading, setRelationshipLoading] =
     useState(false)
 
-  // Coach selector
+  // =========================================================
+  // COACH RELATIONSHIP
+  // =========================================================
+
   const [showCoachSelector, setShowCoachSelector] =
     useState(false)
 
@@ -59,10 +63,22 @@ export default function StudentDetail() {
   const [coachStartedAt, setCoachStartedAt] =
     useState('')
 
-  const [coachRelationshipLoading, setCoachRelationshipLoading] =
-    useState(false)
+  const [
+    coachRelationshipLoading,
+    setCoachRelationshipLoading,
+  ] = useState(false)
+
+  // =========================================================
+  // LOAD
+  // =========================================================
 
   useEffect(() => {
+    if (!id) {
+      setError('Student ID is missing.')
+      setLoading(false)
+      return
+    }
+
     loadStudent()
   }, [id])
 
@@ -78,6 +94,7 @@ export default function StudentDetail() {
         join_date,
         level,
         status,
+
         profiles (
           id,
           username,
@@ -87,12 +104,15 @@ export default function StudentDetail() {
           gender,
           date_of_birth
         ),
+
         parent_students (
           parent_id,
           relationship,
+
           parents (
             id,
             profile_id,
+
             profiles (
               id,
               username,
@@ -101,13 +121,16 @@ export default function StudentDetail() {
             )
           )
         ),
+
         coach_students (
           coach_id,
           started_at,
           ended_at,
+
           coaches (
             id,
             profile_id,
+
             profiles (
               id,
               username,
@@ -136,16 +159,28 @@ export default function StudentDetail() {
     setAddress(profile?.address || '')
     setGender(profile?.gender || '')
     setDateOfBirth(profile?.date_of_birth || '')
+
     setLevel(data.level || '')
     setStatus(data.status || 'active')
+
+    // -------------------------------------------------------
+    // PARENTS
+    // -------------------------------------------------------
 
     const parentList =
       data.parent_students
         ?.map((item) => ({
           ...item.parents,
-          relationship: item.relationship || '',
+          relationship:
+            item.relationship || '',
         }))
         || []
+
+    setParents(parentList)
+
+    // -------------------------------------------------------
+    // ACTIVE COACHES ONLY
+    // -------------------------------------------------------
 
     const coachList =
       data.coach_students
@@ -156,15 +191,19 @@ export default function StudentDetail() {
         )
         .map((item) => ({
           ...item.coaches,
-          started_at: item.started_at || '',
+          started_at:
+            item.started_at || '',
         }))
         || []
 
-    setParents(parentList)
     setCoaches(coachList)
 
     setLoading(false)
   }
+
+  // =========================================================
+  // STUDENT EDIT
+  // =========================================================
 
   async function saveStudent() {
     setSaving(true)
@@ -203,16 +242,27 @@ export default function StudentDetail() {
     const profile = student?.profiles
 
     setUsername(profile?.username || '')
-    setDisplayName(profile?.display_name || '')
+    setDisplayName(
+      profile?.display_name || ''
+    )
     setPhone(profile?.phone || '')
     setAddress(profile?.address || '')
     setGender(profile?.gender || '')
-    setDateOfBirth(profile?.date_of_birth || '')
+    setDateOfBirth(
+      profile?.date_of_birth || ''
+    )
+
     setLevel(student?.level || '')
-    setStatus(student?.status || 'active')
+    setStatus(
+      student?.status || 'active'
+    )
 
     setEditing(false)
   }
+
+  // =========================================================
+  // PARENT
+  // =========================================================
 
   async function loadAvailableParents() {
     setRelationshipLoading(true)
@@ -223,6 +273,7 @@ export default function StudentDetail() {
       .select(`
         id,
         profile_id,
+
         profiles (
           id,
           username,
@@ -239,12 +290,16 @@ export default function StudentDetail() {
     }
 
     const existingParentIds =
-      parents.map((parent) => parent.id)
+      parents.map(
+        (parent) => parent.id
+      )
 
     const available =
       (data || []).filter(
         (parent) =>
-          !existingParentIds.includes(parent.id)
+          !existingParentIds.includes(
+            parent.id
+          )
       )
 
     setAvailableParents(available)
@@ -268,7 +323,9 @@ export default function StudentDetail() {
     }
 
     if (!parentRelationship) {
-      setError('Please select a relationship.')
+      setError(
+        'Please select a relationship.'
+      )
       return
     }
 
@@ -278,9 +335,14 @@ export default function StudentDetail() {
     const { error } = await supabase.rpc(
       'admin_add_parent_student',
       {
-        p_parent_id: selectedParentId,
-        p_student_id: student.id,
-        p_relationship: parentRelationship,
+        p_parent_id:
+          selectedParentId,
+
+        p_student_id:
+          student.id,
+
+        p_relationship:
+          parentRelationship,
       }
     )
 
@@ -293,7 +355,8 @@ export default function StudentDetail() {
 
     const parent =
       availableParents.find(
-        (item) => item.id === selectedParentId
+        (item) =>
+          item.id === selectedParentId
       )
 
     if (parent) {
@@ -301,12 +364,14 @@ export default function StudentDetail() {
         ...current,
         {
           ...parent,
-          relationship: parentRelationship,
+          relationship:
+            parentRelationship,
         },
       ])
     }
 
     cancelParentSelector()
+
     setRelationshipLoading(false)
   }
 
@@ -339,12 +404,17 @@ export default function StudentDetail() {
 
     setParents((current) =>
       current.filter(
-        (parent) => parent.id !== parentId
+        (parent) =>
+          parent.id !== parentId
       )
     )
 
     setRelationshipLoading(false)
   }
+
+  // =========================================================
+  // COACH
+  // =========================================================
 
   async function loadAvailableCoaches() {
     setCoachRelationshipLoading(true)
@@ -355,6 +425,7 @@ export default function StudentDetail() {
       .select(`
         id,
         profile_id,
+
         profiles (
           id,
           username,
@@ -371,12 +442,16 @@ export default function StudentDetail() {
     }
 
     const existingCoachIds =
-      coaches.map((coach) => coach.id)
+      coaches.map(
+        (coach) => coach.id
+      )
 
     const available =
       (data || []).filter(
         (coach) =>
-          !existingCoachIds.includes(coach.id)
+          !existingCoachIds.includes(
+            coach.id
+          )
       )
 
     setAvailableCoaches(available)
@@ -405,8 +480,12 @@ export default function StudentDetail() {
     const { error } = await supabase.rpc(
       'admin_add_coach_student',
       {
-        p_coach_id: selectedCoachId,
-        p_student_id: student.id,
+        p_coach_id:
+          selectedCoachId,
+
+        p_student_id:
+          student.id,
+
         p_started_at:
           coachStartedAt || null,
       }
@@ -421,7 +500,8 @@ export default function StudentDetail() {
 
     const coach =
       availableCoaches.find(
-        (item) => item.id === selectedCoachId
+        (item) =>
+          item.id === selectedCoachId
       )
 
     if (coach) {
@@ -436,6 +516,7 @@ export default function StudentDetail() {
     }
 
     cancelCoachSelector()
+
     setCoachRelationshipLoading(false)
   }
 
@@ -455,7 +536,10 @@ export default function StudentDetail() {
       'admin_remove_coach_student',
       {
         p_coach_id: coachId,
-        p_student_id: student.id,
+
+        p_student_id:
+          student.id,
+
         p_ended_at:
           new Date()
             .toISOString()
@@ -472,12 +556,17 @@ export default function StudentDetail() {
 
     setCoaches((current) =>
       current.filter(
-        (coach) => coach.id !== coachId
+        (coach) =>
+          coach.id !== coachId
       )
     )
 
     setCoachRelationshipLoading(false)
   }
+
+  // =========================================================
+  // LOADING
+  // =========================================================
 
   if (loading) {
     return (
@@ -492,6 +581,10 @@ export default function StudentDetail() {
       </div>
     )
   }
+
+  // =========================================================
+  // NOT FOUND
+  // =========================================================
 
   if (!student) {
     return (
@@ -509,28 +602,42 @@ export default function StudentDetail() {
 
   const profile = student.profiles
 
+  // =========================================================
+  // PAGE
+  // =========================================================
+
   return (
     <div className="academy-app">
       <AcademyHeader />
 
       <main className="page-container">
 
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
         <div className="page-header">
+
           <div className="page-header-copy">
+
             <button
               className="back-button"
               onClick={() =>
-                navigate('/students')
+                window.location.href =
+                  '/students'
               }
             >
               ← Students
             </button>
 
-            <h1>{profile?.display_name}</h1>
+            <h1>
+              {profile?.display_name}
+            </h1>
 
             <p>
               Student details and relationships
             </p>
+
           </div>
 
           {!editing ? (
@@ -544,6 +651,7 @@ export default function StudentDetail() {
             </button>
           ) : (
             <div className="button-row">
+
               <button
                 className="button button-secondary"
                 onClick={cancelEditing}
@@ -561,9 +669,15 @@ export default function StudentDetail() {
                   ? 'Saving...'
                   : 'Save Changes'}
               </button>
+
             </div>
           )}
+
         </div>
+
+        {/* =================================================
+            ERROR
+        ================================================= */}
 
         {error && (
           <div className="alert alert-error">
@@ -571,14 +685,19 @@ export default function StudentDetail() {
           </div>
         )}
 
-        {/* BASIC INFORMATION */}
+        {/* =================================================
+            BASIC INFORMATION
+        ================================================= */}
 
         <section className="card detail-card">
+
           <h2 className="detail-card-title">
             Basic Information
           </h2>
 
           <div className="detail-grid">
+
+            {/* USERNAME */}
 
             <div>
               <div className="detail-label">
@@ -604,6 +723,8 @@ export default function StudentDetail() {
               )}
             </div>
 
+            {/* DISPLAY NAME */}
+
             <div>
               <div className="detail-label">
                 Display Name
@@ -621,10 +742,13 @@ export default function StudentDetail() {
                 />
               ) : (
                 <div className="detail-value detail-value-strong">
-                  {profile?.display_name || '—'}
+                  {profile?.display_name ||
+                    '—'}
                 </div>
               )}
             </div>
+
+            {/* PHONE */}
 
             <div>
               <div className="detail-label">
@@ -647,6 +771,8 @@ export default function StudentDetail() {
                 </div>
               )}
             </div>
+
+            {/* GENDER */}
 
             <div>
               <div className="detail-label">
@@ -682,6 +808,8 @@ export default function StudentDetail() {
               )}
             </div>
 
+            {/* DATE OF BIRTH */}
+
             <div>
               <div className="detail-label">
                 Date of Birth
@@ -700,10 +828,13 @@ export default function StudentDetail() {
                 />
               ) : (
                 <div className="detail-value">
-                  {profile?.date_of_birth || '—'}
+                  {profile?.date_of_birth ||
+                    '—'}
                 </div>
               )}
             </div>
+
+            {/* LEVEL */}
 
             <div>
               <div className="detail-label">
@@ -740,6 +871,8 @@ export default function StudentDetail() {
               )}
             </div>
 
+            {/* STATUS */}
+
             <div>
               <div className="detail-label">
                 Status
@@ -770,6 +903,8 @@ export default function StudentDetail() {
               )}
             </div>
 
+            {/* JOIN DATE */}
+
             <div>
               <div className="detail-label">
                 Join Date
@@ -780,7 +915,10 @@ export default function StudentDetail() {
               </div>
             </div>
 
+            {/* ADDRESS */}
+
             <div className="detail-grid-full">
+
               <div className="detail-label">
                 Address
               </div>
@@ -801,20 +939,26 @@ export default function StudentDetail() {
                   {profile?.address || '—'}
                 </div>
               )}
+
             </div>
 
           </div>
         </section>
 
-        {/* PARENTS + COACHES */}
+        {/* =================================================
+            PARENTS + COACHES
+        ================================================= */}
 
         <div className="detail-two-column">
 
-          {/* PARENTS */}
+          {/* =================================================
+              PARENTS
+          ================================================= */}
 
           <section className="card detail-card">
 
             <div className="detail-card-header">
+
               <h2 className="detail-card-title">
                 Parents
               </h2>
@@ -822,7 +966,9 @@ export default function StudentDetail() {
               {!showParentSelector && (
                 <button
                   className="button button-secondary"
-                  onClick={loadAvailableParents}
+                  onClick={
+                    loadAvailableParents
+                  }
                   disabled={
                     relationshipLoading
                   }
@@ -830,12 +976,16 @@ export default function StudentDetail() {
                   + Add Parent
                 </button>
               )}
+
             </div>
+
+            {/* ADD PARENT FORM */}
 
             {showParentSelector && (
               <div className="relationship-form">
 
                 <div className="form-group">
+
                   <label className="form-label">
                     Parent
                   </label>
@@ -852,6 +1002,7 @@ export default function StudentDetail() {
                       relationshipLoading
                     }
                   >
+
                     <option value="">
                       Select parent
                     </option>
@@ -865,6 +1016,7 @@ export default function StudentDetail() {
                           {parent.profiles
                             ?.display_name ||
                             'Unnamed parent'}
+
                           {parent.profiles
                             ?.username
                             ? ` (@${parent.profiles.username})`
@@ -872,10 +1024,13 @@ export default function StudentDetail() {
                         </option>
                       )
                     )}
+
                   </select>
+
                 </div>
 
                 <div className="form-group">
+
                   <label className="form-label">
                     Relationship
                   </label>
@@ -892,6 +1047,7 @@ export default function StudentDetail() {
                       relationshipLoading
                     }
                   >
+
                     <option value="">
                       Select relationship
                     </option>
@@ -911,10 +1067,13 @@ export default function StudentDetail() {
                     <option value="Other">
                       Other
                     </option>
+
                   </select>
+
                 </div>
 
                 <div className="button-row">
+
                   <button
                     className="button button-primary"
                     onClick={addParent}
@@ -938,10 +1097,13 @@ export default function StudentDetail() {
                   >
                     Cancel
                   </button>
+
                 </div>
 
               </div>
             )}
+
+            {/* EMPTY */}
 
             {parents.length === 0 &&
               !showParentSelector && (
@@ -950,14 +1112,19 @@ export default function StudentDetail() {
                 </div>
               )}
 
+            {/* PARENT LIST */}
+
             <div className="relationship-list">
 
               {parents.map((parent) => (
+
                 <div
                   className="relationship-item"
                   key={parent.id}
                 >
+
                   <div>
+
                     <div className="relationship-item-title">
                       {parent.profiles
                         ?.display_name ||
@@ -972,6 +1139,7 @@ export default function StudentDetail() {
                     )}
 
                     <div className="relationship-item-meta">
+
                       <span>
                         Relationship
                       </span>
@@ -980,13 +1148,17 @@ export default function StudentDetail() {
                         {parent.relationship ||
                           '—'}
                       </strong>
+
                     </div>
+
                   </div>
 
                   <button
                     className="button button-danger"
                     onClick={() =>
-                      removeParent(parent.id)
+                      removeParent(
+                        parent.id
+                      )
                     }
                     disabled={
                       relationshipLoading
@@ -994,17 +1166,23 @@ export default function StudentDetail() {
                   >
                     Remove
                   </button>
+
                 </div>
+
               ))}
 
             </div>
+
           </section>
 
-          {/* COACHES */}
+          {/* =================================================
+              COACHES
+          ================================================= */}
 
           <section className="card detail-card">
 
             <div className="detail-card-header">
+
               <h2 className="detail-card-title">
                 Coaches
               </h2>
@@ -1022,12 +1200,16 @@ export default function StudentDetail() {
                   + Add Coach
                 </button>
               )}
+
             </div>
+
+            {/* ADD COACH FORM */}
 
             {showCoachSelector && (
               <div className="relationship-form">
 
                 <div className="form-group">
+
                   <label className="form-label">
                     Coach
                   </label>
@@ -1044,6 +1226,7 @@ export default function StudentDetail() {
                       coachRelationshipLoading
                     }
                   >
+
                     <option value="">
                       Select coach
                     </option>
@@ -1057,6 +1240,7 @@ export default function StudentDetail() {
                           {coach.profiles
                             ?.display_name ||
                             'Unnamed coach'}
+
                           {coach.profiles
                             ?.username
                             ? ` (@${coach.profiles.username})`
@@ -1064,10 +1248,13 @@ export default function StudentDetail() {
                         </option>
                       )
                     )}
+
                   </select>
+
                 </div>
 
                 <div className="form-group">
+
                   <label className="form-label">
                     Start Date
                   </label>
@@ -1085,9 +1272,11 @@ export default function StudentDetail() {
                       coachRelationshipLoading
                     }
                   />
+
                 </div>
 
                 <div className="button-row">
+
                   <button
                     className="button button-primary"
                     onClick={addCoach}
@@ -1111,10 +1300,13 @@ export default function StudentDetail() {
                   >
                     Cancel
                   </button>
+
                 </div>
 
               </div>
             )}
+
+            {/* EMPTY */}
 
             {coaches.length === 0 &&
               !showCoachSelector && (
@@ -1123,14 +1315,19 @@ export default function StudentDetail() {
                 </div>
               )}
 
+            {/* COACH LIST */}
+
             <div className="relationship-list">
 
               {coaches.map((coach) => (
+
                 <div
                   className="relationship-item"
                   key={coach.id}
                 >
+
                   <div>
+
                     <div className="relationship-item-title">
                       {coach.profiles
                         ?.display_name ||
@@ -1146,6 +1343,7 @@ export default function StudentDetail() {
 
                     {coach.started_at && (
                       <div className="relationship-item-meta">
+
                         <span>
                           Start Date
                         </span>
@@ -1153,14 +1351,18 @@ export default function StudentDetail() {
                         <strong>
                           {coach.started_at}
                         </strong>
+
                       </div>
                     )}
+
                   </div>
 
                   <button
                     className="button button-danger"
                     onClick={() =>
-                      removeCoach(coach.id)
+                      removeCoach(
+                        coach.id
+                      )
                     }
                     disabled={
                       coachRelationshipLoading
@@ -1168,13 +1370,17 @@ export default function StudentDetail() {
                   >
                     Remove
                   </button>
+
                 </div>
+
               ))}
 
             </div>
+
           </section>
 
         </div>
+
       </main>
     </div>
   )
