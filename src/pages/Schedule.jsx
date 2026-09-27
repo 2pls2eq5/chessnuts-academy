@@ -164,6 +164,7 @@ function Schedule() {
             style={{
               padding: '24px 24px 16px',
               margin: 0,
+              textAlign: 'center',
             }}
           >
             <h2>Upcoming Schedules</h2>
