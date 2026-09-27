@@ -39,7 +39,6 @@ function StudentDetail({ studentId }) {
         .from('students')
         .select(`
           id,
-          date_of_birth,
           join_date,
           status,
           level,
@@ -48,7 +47,8 @@ function StudentDetail({ studentId }) {
             username,
             phone,
             address,
-            gender
+            gender,
+            date_of_birth
           )
         `)
         .eq('id', studentId)
@@ -74,7 +74,7 @@ function StudentDetail({ studentId }) {
         gender:
           data.profiles?.gender || '',
         dateOfBirth:
-          data.date_of_birth || '',
+          data.profiles?.date_of_birth || '',
         level:
           data.level || '',
         status:
@@ -110,7 +110,7 @@ function StudentDetail({ studentId }) {
       gender:
         student.profiles?.gender || '',
       dateOfBirth:
-        student.date_of_birth || '',
+        student.profiles?.date_of_birth || '',
       level:
         student.level || '',
       status:
@@ -159,21 +159,33 @@ function StudentDetail({ studentId }) {
 
     setStudent((current) => ({
       ...current,
-      date_of_birth:
-        form.dateOfBirth || null,
+
       level:
         form.level || null,
-      status: form.status,
+
+      status:
+        form.status,
+
       profiles: {
         ...current.profiles,
-        username: form.username,
+
+        username:
+          form.username,
+
         display_name:
           form.displayName,
-        phone: form.phone || null,
+
+        phone:
+          form.phone || null,
+
         address:
           form.address || null,
+
         gender:
           form.gender || null,
+
+        date_of_birth:
+          form.dateOfBirth || null,
       },
     }))
 
@@ -347,7 +359,8 @@ function StudentDetail({ studentId }) {
 
                 <div className="detail-value">
                   {formatDate(
-                    student.date_of_birth
+                    student.profiles
+                      ?.date_of_birth
                   )}
                 </div>
               </div>
