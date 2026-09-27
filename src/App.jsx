@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
+
 import Dashboard from './pages/Dashboard'
+
 import Students from './pages/Students'
 import StudentDetail from './pages/StudentDetail'
 import AddStudent from './pages/AddStudent'
+
+import Coaches from './pages/Coaches'
+import AddCoach from './pages/AddCoach'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -167,15 +172,19 @@ function App() {
   const path =
     window.location.pathname
 
+  /* =========================
+     STUDENTS
+  ========================= */
+
   if (path === '/students/add') {
-  return (
-    <AddStudent
-      user={user}
-      profile={profile}
-    />
-  )
-}
-  
+    return (
+      <AddStudent
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
   if (path === '/students') {
     return (
       <Students
@@ -199,6 +208,32 @@ function App() {
       />
     )
   }
+
+  /* =========================
+     COACHES
+  ========================= */
+
+  if (path === '/coaches/add') {
+    return (
+      <AddCoach
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
+  if (path === '/coaches') {
+    return (
+      <Coaches
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
+  /* =========================
+     DASHBOARD
+  ========================= */
 
   return (
     <Dashboard
