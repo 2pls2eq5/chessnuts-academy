@@ -155,8 +155,15 @@ function Schedule() {
           </div>
         </div>
 
+        {/* Upcoming Schedules */}
         <div className="card table-card">
-          <div className="form-header">
+          <div
+            className="form-header"
+            style={{
+              padding: '24px 24px 16px',
+              margin: 0,
+            }}
+          >
             <h2>Upcoming Schedules</h2>
             <p>
               Approved recurring student schedules
@@ -164,7 +171,12 @@ function Schedule() {
           </div>
 
           {schedules.length === 0 ? (
-            <div className="empty-state">
+            <div
+              className="empty-state"
+              style={{
+                padding: '24px',
+              }}
+            >
               No schedules found.
             </div>
           ) : (
@@ -214,6 +226,7 @@ function Schedule() {
           )}
         </div>
 
+        {/* Schedule Management */}
         <div
           style={{
             display: 'grid',
@@ -223,7 +236,13 @@ function Schedule() {
             marginTop: '24px',
           }}
         >
-          <div className="card">
+          <div
+            className="card"
+            style={{
+              textAlign: 'center',
+              padding: '24px',
+            }}
+          >
             <div className="form-header">
               <h2>Coach Availability</h2>
 
@@ -251,7 +270,13 @@ function Schedule() {
             </div>
           </div>
 
-          <div className="card">
+          <div
+            className="card"
+            style={{
+              textAlign: 'center',
+              padding: '24px',
+            }}
+          >
             <div className="form-header">
               <h2>Student Requests</h2>
 
