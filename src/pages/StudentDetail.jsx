@@ -16,6 +16,27 @@ function StudentDetail({ studentId }) {
   const [saveError, setSaveError] = useState('')
   const [saveSuccess, setSaveSuccess] = useState('')
 
+  const [parents, setParents] = useState([])
+  const [coaches, setCoaches] = useState([])
+
+  const [relationshipLoading, setRelationshipLoading] =
+    useState(false)
+
+  const [relationshipError, setRelationshipError] =
+    useState('')
+
+  const [showParentSelector, setShowParentSelector] =
+    useState(false)
+
+  const [showCoachSelector, setShowCoachSelector] =
+    useState(false)
+
+  const [availableParents, setAvailableParents] =
+    useState([])
+
+  const [availableCoaches, setAvailableCoaches] =
+    useState([])
+
   const [form, setForm] = useState({
     username: '',
     displayName: '',
@@ -49,6 +70,26 @@ function StudentDetail({ studentId }) {
             address,
             gender,
             date_of_birth
+          ),
+          parent_students (
+            parent_id,
+            parents (
+              id,
+              profiles (
+                display_name,
+                username
+              )
+            )
+          ),
+          coach_students (
+            coach_id,
+            coaches (
+              id,
+              profiles (
+                display_name,
+                username
+              )
+            )
           )
         `)
         .eq('id', studentId)
@@ -61,6 +102,18 @@ function StudentDetail({ studentId }) {
       }
 
       setStudent(data)
+
+      setParents(
+        (data.parent_students || [])
+          .map((item) => item.parents)
+          .filter(Boolean)
+      )
+
+      setCoaches(
+        (data.coach_students || [])
+          .map((item) => item.coaches)
+          .filter(Boolean)
+      )
 
       setForm({
         username:
@@ -197,6 +250,214 @@ function StudentDetail({ studentId }) {
     setSaving(false)
   }
 
+  async function loadAvailableParents() {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('parents')
+      .select(`
+        id,
+        profiles (
+          display_name,
+          username
+        )
+      `)
+      .order('created_at', {
+        ascending: true,
+      })
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    const existingIds =
+      parents.map((parent) => parent.id)
+
+    setAvailableParents(
+      (data || []).filter(
+        (parent) =>
+          !existingIds.includes(parent.id)
+      )
+    )
+
+    setShowParentSelector(true)
+    setRelationshipLoading(false)
+  }
+
+  async function loadAvailableCoaches() {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('coaches')
+      .select(`
+        id,
+        profiles (
+          display_name,
+          username
+        )
+      `)
+      .order('created_at', {
+        ascending: true,
+      })
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    const existingIds =
+      coaches.map((coach) => coach.id)
+
+    setAvailableCoaches(
+      (data || []).filter(
+        (coach) =>
+          !existingIds.includes(coach.id)
+      )
+    )
+
+    setShowCoachSelector(true)
+    setRelationshipLoading(false)
+  }
+
+  async function addParent(parentId) {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    const { error } =
+      await supabase.rpc(
+        'admin_add_parent_student',
+        {
+          p_parent_id: parentId,
+          p_student_id: student.id,
+        }
+      )
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    const parent =
+      availableParents.find(
+        (item) => item.id === parentId
+      )
+
+    if (parent) {
+      setParents((current) => [
+        ...current,
+        parent,
+      ])
+    }
+
+    setShowParentSelector(false)
+    setRelationshipLoading(false)
+  }
+
+  async function removeParent(parentId) {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    const { error } =
+      await supabase.rpc(
+        'admin_remove_parent_student',
+        {
+          p_parent_id: parentId,
+          p_student_id: student.id,
+        }
+      )
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    setParents((current) =>
+      current.filter(
+        (parent) =>
+          parent.id !== parentId
+      )
+    )
+
+    setRelationshipLoading(false)
+  }
+
+  async function addCoach(coachId) {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    const { error } =
+      await supabase.rpc(
+        'admin_add_coach_student',
+        {
+          p_coach_id: coachId,
+          p_student_id: student.id,
+        }
+      )
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    const coach =
+      availableCoaches.find(
+        (item) => item.id === coachId
+      )
+
+    if (coach) {
+      setCoaches((current) => [
+        ...current,
+        coach,
+      ])
+    }
+
+    setShowCoachSelector(false)
+    setRelationshipLoading(false)
+  }
+
+  async function removeCoach(coachId) {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    const { error } =
+      await supabase.rpc(
+        'admin_remove_coach_student',
+        {
+          p_coach_id: coachId,
+          p_student_id: student.id,
+        }
+      )
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    setCoaches((current) =>
+      current.filter(
+        (coach) =>
+          coach.id !== coachId
+      )
+    )
+
+    setRelationshipLoading(false)
+  }
+
   if (loading) {
     return (
       <div className="academy-app">
@@ -284,123 +545,361 @@ function StudentDetail({ studentId }) {
         )}
 
         {!editing ? (
-          <section className="card detail-card">
-            <div className="detail-card-header">
-              <h2 className="detail-card-title">
-                Basic Information
-              </h2>
+          <>
+            <section className="card detail-card">
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
+                  Basic Information
+                </h2>
 
-              <button
-                className="btn btn-primary"
-                onClick={startEditing}
-              >
-                Edit Student
-              </button>
-            </div>
-
-            <div className="detail-grid">
-              <div>
-                <div className="detail-label">
-                  Name
-                </div>
-
-                <div className="detail-value detail-value-strong">
-                  {displayName}
-                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={startEditing}
+                >
+                  Edit Student
+                </button>
               </div>
 
-              <div>
-                <div className="detail-label">
-                  Username
+              <div className="detail-grid">
+                <div>
+                  <div className="detail-label">
+                    Name
+                  </div>
+
+                  <div className="detail-value detail-value-strong">
+                    {displayName}
+                  </div>
                 </div>
 
-                <div className="detail-value">
-                  {username}
+                <div>
+                  <div className="detail-label">
+                    Username
+                  </div>
+
+                  <div className="detail-value">
+                    {username}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Phone
+                  </div>
+
+                  <div className="detail-value">
+                    {student.profiles
+                      ?.phone || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Gender
+                  </div>
+
+                  <div className="detail-value">
+                    {student.profiles
+                      ?.gender || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Address
+                  </div>
+
+                  <div className="detail-value">
+                    {student.profiles
+                      ?.address || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Date of Birth
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      student.profiles
+                        ?.date_of_birth
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Join Date
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      student.join_date
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Level
+                  </div>
+
+                  <div className="detail-value">
+                    {getStudentLevelLabel(
+                      student.level
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Status
+                  </div>
+
+                  <div className="detail-value">
+                    {student.status ||
+                      '—'}
+                  </div>
                 </div>
               </div>
+            </section>
 
-              <div>
-                <div className="detail-label">
-                  Phone
-                </div>
+            <section className="card detail-card">
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
+                  Parents
+                </h2>
 
-                <div className="detail-value">
-                  {student.profiles
-                    ?.phone || '—'}
-                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={
+                    loadAvailableParents
+                  }
+                  disabled={
+                    relationshipLoading
+                  }
+                >
+                  + Add Parent
+                </button>
               </div>
 
-              <div>
-                <div className="detail-label">
-                  Gender
+              {relationshipError && (
+                <div className="error-box">
+                  {relationshipError}
                 </div>
+              )}
 
-                <div className="detail-value">
-                  {student.profiles
-                    ?.gender || '—'}
-                </div>
-              </div>
+              {showParentSelector && (
+                <div className="form-group">
+                  <label className="form-label">
+                    Select Parent
+                  </label>
 
-              <div>
-                <div className="detail-label">
-                  Address
-                </div>
+                  {availableParents.length ===
+                  0 ? (
+                    <div className="detail-value">
+                      No available parents.
+                    </div>
+                  ) : (
+                    <select
+                      className="form-select"
+                      defaultValue=""
+                      onChange={(event) => {
+                        if (
+                          event.target.value
+                        ) {
+                          addParent(
+                            event.target.value
+                          )
+                        }
+                      }}
+                      disabled={
+                        relationshipLoading
+                      }
+                    >
+                      <option value="">
+                        Select a parent
+                      </option>
 
-                <div className="detail-value">
-                  {student.profiles
-                    ?.address || '—'}
-                </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Date of Birth
-                </div>
-
-                <div className="detail-value">
-                  {formatDate(
-                    student.profiles
-                      ?.date_of_birth
+                      {availableParents.map(
+                        (parent) => (
+                          <option
+                            key={parent.id}
+                            value={parent.id}
+                          >
+                            {parent.profiles
+                              ?.display_name ||
+                              'Unnamed Parent'}
+                          </option>
+                        )
+                      )}
+                    </select>
                   )}
                 </div>
+              )}
+
+              {parents.length === 0 ? (
+                <div className="empty-state">
+                  No parents assigned.
+                </div>
+              ) : (
+                <div className="detail-grid">
+                  {parents.map((parent) => (
+                    <div key={parent.id}>
+                      <div className="detail-label">
+                        Parent
+                      </div>
+
+                      <div className="detail-value detail-value-strong">
+                        {parent.profiles
+                          ?.display_name ||
+                          'Unnamed Parent'}
+                      </div>
+
+                      {parent.profiles
+                        ?.username && (
+                        <div className="detail-value">
+                          @{parent.profiles.username}
+                        </div>
+                      )}
+
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() =>
+                          removeParent(
+                            parent.id
+                          )
+                        }
+                        disabled={
+                          relationshipLoading
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="card detail-card">
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
+                  Coaches
+                </h2>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={
+                    loadAvailableCoaches
+                  }
+                  disabled={
+                    relationshipLoading
+                  }
+                >
+                  + Add Coach
+                </button>
               </div>
 
-              <div>
-                <div className="detail-label">
-                  Join Date
+              {relationshipError && (
+                <div className="error-box">
+                  {relationshipError}
                 </div>
+              )}
 
-                <div className="detail-value">
-                  {formatDate(
-                    student.join_date
+              {showCoachSelector && (
+                <div className="form-group">
+                  <label className="form-label">
+                    Select Coach
+                  </label>
+
+                  {availableCoaches.length ===
+                  0 ? (
+                    <div className="detail-value">
+                      No available coaches.
+                    </div>
+                  ) : (
+                    <select
+                      className="form-select"
+                      defaultValue=""
+                      onChange={(event) => {
+                        if (
+                          event.target.value
+                        ) {
+                          addCoach(
+                            event.target.value
+                          )
+                        }
+                      }}
+                      disabled={
+                        relationshipLoading
+                      }
+                    >
+                      <option value="">
+                        Select a coach
+                      </option>
+
+                      {availableCoaches.map(
+                        (coach) => (
+                          <option
+                            key={coach.id}
+                            value={coach.id}
+                          >
+                            {coach.profiles
+                              ?.display_name ||
+                              'Unnamed Coach'}
+                          </option>
+                        )
+                      )}
+                    </select>
                   )}
                 </div>
-              </div>
+              )}
 
-              <div>
-                <div className="detail-label">
-                  Level
+              {coaches.length === 0 ? (
+                <div className="empty-state">
+                  No coaches assigned.
                 </div>
+              ) : (
+                <div className="detail-grid">
+                  {coaches.map((coach) => (
+                    <div key={coach.id}>
+                      <div className="detail-label">
+                        Coach
+                      </div>
 
-                <div className="detail-value">
-                  {getStudentLevelLabel(
-                    student.level
-                  )}
-                </div>
-              </div>
+                      <div className="detail-value detail-value-strong">
+                        {coach.profiles
+                          ?.display_name ||
+                          'Unnamed Coach'}
+                      </div>
 
-              <div>
-                <div className="detail-label">
-                  Status
-                </div>
+                      {coach.profiles
+                        ?.username && (
+                        <div className="detail-value">
+                          @{coach.profiles.username}
+                        </div>
+                      )}
 
-                <div className="detail-value">
-                  {student.status ||
-                    '—'}
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() =>
+                          removeCoach(
+                            coach.id
+                          )
+                        }
+                        disabled={
+                          relationshipLoading
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </div>
-          </section>
+              )}
+            </section>
+          </>
         ) : (
           <form
             className="card form-card"
