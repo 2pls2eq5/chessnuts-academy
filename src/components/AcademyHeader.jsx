@@ -14,7 +14,8 @@ function AcademyHeader() {
     },
     {
       label: 'Coaches',
-      comingSoon: true,
+      path: '/coaches',
+      active: path.startsWith('/coaches'),
     },
     {
       label: 'Parents',
