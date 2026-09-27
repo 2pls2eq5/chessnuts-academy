@@ -11,6 +11,9 @@ import Coaches from './pages/Coaches'
 import CoachDetail from './pages/CoachDetail'
 import AddCoach from './pages/AddCoach'
 
+import Parents from './pages/Parents'
+import AddParent from './pages/AddParent'
+
 function App() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
@@ -241,6 +244,28 @@ function App() {
     return (
       <CoachDetail
         coachId={coachId}
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
+  /* =========================
+     PARENTS
+  ========================= */
+
+  if (path === '/parents/add') {
+    return (
+      <AddParent
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
+  if (path === '/parents') {
+    return (
+      <Parents
         user={user}
         profile={profile}
       />
