@@ -8,6 +8,7 @@ import StudentDetail from './pages/StudentDetail'
 import AddStudent from './pages/AddStudent'
 
 import Coaches from './pages/Coaches'
+import CoachDetail from './pages/CoachDetail'
 import AddCoach from './pages/AddCoach'
 
 function App() {
@@ -225,6 +226,21 @@ function App() {
   if (path === '/coaches') {
     return (
       <Coaches
+        user={user}
+        profile={profile}
+      />
+    )
+  }
+
+  if (
+    path.startsWith('/coaches/')
+  ) {
+    const coachId =
+      path.split('/')[2]
+
+    return (
+      <CoachDetail
+        coachId={coachId}
         user={user}
         profile={profile}
       />
