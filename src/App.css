@@ -13,9 +13,12 @@
 ========================================================= */
 
 .academy-header {
-  height: 68px;
   background: var(--header);
   color: var(--header-text);
+}
+
+.academy-header-top {
+  height: 68px;
   display: flex;
   align-items: center;
 }
@@ -68,6 +71,72 @@
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.2px;
+}
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+
+.academy-nav {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #181c19;
+}
+
+.academy-nav-inner {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.academy-nav-item {
+  position: relative;
+  height: 44px;
+  padding: 0 15px;
+  border: none;
+  background: transparent;
+  color: #aeb5ae;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.academy-nav-item:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.academy-nav-active {
+  color: white;
+}
+
+.academy-nav-active::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  right: 15px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+}
+
+.academy-nav-disabled {
+  color: #666d67;
+  cursor: default;
+}
+
+.academy-nav-disabled:hover {
+  color: #666d67;
+  background: transparent;
 }
 
 /* =========================================================
@@ -673,6 +742,10 @@
     padding: 0 20px;
   }
 
+  .academy-nav-inner {
+    padding: 0 20px;
+  }
+
   .academy-main {
     padding: 32px 20px 48px;
   }
@@ -715,12 +788,21 @@
     display: none;
   }
 
-  .academy-header {
-    height: 60px;
-  }
-
   .academy-main {
     padding: 26px 16px 40px;
+  }
+
+  .academy-nav-inner {
+    padding: 0 12px;
+  }
+
+  .academy-nav-item {
+    padding: 0 13px;
+  }
+
+  .academy-nav-active::after {
+    left: 13px;
+    right: 13px;
   }
 
   .page-header-copy h1,
