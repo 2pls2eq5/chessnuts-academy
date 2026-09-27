@@ -1,870 +1,893 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+  STUDENT_LEVELS,
+  getStudentLevelLabel,
+} from '../constants/studentLevels'
 import AcademyHeader from '../components/AcademyHeader'
 
-const STUDENT_LEVELS = [
-  { value: 'BASIC_1', label: 'Basic I' },
-  { value: 'BASIC_2', label: 'Basic II' },
-  { value: 'INTERMEDIATE_1', label: 'Intermediate I' },
-  { value: 'INTERMEDIATE_2', label: 'Intermediate II' },
-  { value: 'PRE_ADVANCED', label: 'Pre-Advanced' },
-  { value: 'ADVANCED_1', label: 'Advanced I' },
-  { value: 'ADVANCED_2', label: 'Advanced II' },
-  { value: 'EXPERT_1', label: 'Expert I' },
-  { value: 'EXPERT_2', label: 'Expert II' },
-]
-
-function getStudentLevelLabel(value) {
-  const level = STUDENT_LEVELS.find(
-    (item) => item.value === value
-  )
-
-  return level?.label || value
-}
-
-function StudentDetail({
-  studentId,
-  user,
-  profile,
-}) {
-  const [student, setStudent] = useState(null)
-
+function StudentDetail({ studentId }) {
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-
+  const [student, setStudent] = useState(null)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
-  const [username, setUsername] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [address, setAddress] = useState('')
-  const [gender, setGender] = useState('')
-  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saveSuccess, setSaveSuccess] = useState('')
 
-  const [joinDate, setJoinDate] = useState('')
-  const [level, setLevel] = useState('')
-  const [status, setStatus] = useState('active')
-
-  // Active relationships shown on the page
   const [parents, setParents] = useState([])
   const [coaches, setCoaches] = useState([])
 
-  // All available people for dropdowns
-  const [allParents, setAllParents] = useState([])
-  const [allCoaches, setAllCoaches] = useState([])
-
-  const [showAddParent, setShowAddParent] =
+  const [relationshipLoading, setRelationshipLoading] =
     useState(false)
 
-  const [showAddCoach, setShowAddCoach] =
+  const [relationshipError, setRelationshipError] =
+    useState('')
+
+  const [showParentSelector, setShowParentSelector] =
     useState(false)
+
+  const [showCoachSelector, setShowCoachSelector] =
+    useState(false)
+
+  const [availableParents, setAvailableParents] =
+    useState([])
+
+  const [availableCoaches, setAvailableCoaches] =
+    useState([])
 
   const [selectedParentId, setSelectedParentId] =
     useState('')
 
   const [parentRelationship, setParentRelationship] =
-    useState('Mother')
+    useState('')
 
   const [parentIsPrimary, setParentIsPrimary] =
-    useState(true)
+    useState(false)
 
   const [selectedCoachId, setSelectedCoachId] =
     useState('')
 
-  async function loadAvailablePeople() {
-    const [
-      parentsResult,
-      coachesResult,
-    ] = await Promise.all([
-      supabase
-        .from('parents')
+  const [form, setForm] = useState({
+    username: '',
+    displayName: '',
+    phone: '',
+    address: '',
+    gender: '',
+    dateOfBirth: '',
+    level: '',
+    status: '',
+  })
+
+  useEffect(() => {
+    async function loadStudent() {
+      setLoading(true)
+      setError('')
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from('students')
         .select(`
           id,
+          join_date,
+          status,
+          level,
           profiles (
             display_name,
-            username
+            username,
+            phone,
+            address,
+            gender,
+            date_of_birth
+          ),
+          parent_students (
+            parent_id,
+            relationship,
+            is_primary,
+            parents (
+              id,
+              profiles (
+                display_name,
+                username
+              )
+            )
+          ),
+          coach_students (
+            coach_id,
+            started_at,
+            ended_at,
+            coaches (
+              id,
+              profiles (
+                display_name,
+                username
+              )
+            )
           )
         `)
-        .order('id'),
+        .eq('id', studentId)
+        .single()
 
-      supabase
-        .from('coaches')
-        .select(`
-          id,
-          profiles (
-            display_name,
-            username
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      setStudent(data)
+
+      setParents(
+        (data.parent_students || [])
+          .filter((item) => item.parents)
+          .map((item) => ({
+            ...item.parents,
+            relationship:
+              item.relationship || '',
+            is_primary:
+              item.is_primary || false,
+          }))
+      )
+
+      /*
+       * Only active coach-student relationships
+       * are shown.
+       *
+       * A removed relationship remains in the
+       * database with ended_at filled in, but it
+       * must not appear in the active Coaches list.
+       */
+      setCoaches(
+        (data.coach_students || [])
+          .filter(
+            (item) =>
+              item.coaches &&
+              item.ended_at === null
           )
-        `)
-        .order('id'),
-    ])
+          .map((item) => ({
+            ...item.coaches,
+            started_at:
+              item.started_at || null,
+            ended_at:
+              item.ended_at || null,
+          }))
+      )
 
-    if (parentsResult.error) {
-      setError(parentsResult.error.message)
-      return
+      setForm({
+        username:
+          data.profiles?.username || '',
+        displayName:
+          data.profiles?.display_name || '',
+        phone:
+          data.profiles?.phone || '',
+        address:
+          data.profiles?.address || '',
+        gender:
+          data.profiles?.gender || '',
+        dateOfBirth:
+          data.profiles?.date_of_birth || '',
+        level:
+          data.level || '',
+        status:
+          data.status || 'active',
+      })
+
+      setLoading(false)
     }
 
-    if (coachesResult.error) {
-      setError(coachesResult.error.message)
-      return
-    }
+    loadStudent()
+  }, [studentId])
 
-    setAllParents(
-      parentsResult.data || []
-    )
-
-    setAllCoaches(
-      coachesResult.data || []
-    )
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
   }
 
-  async function loadStudent() {
-    setLoading(true)
-    setError('')
+  function startEditing() {
+    setSaveError('')
+    setSaveSuccess('')
+
+    setForm({
+      username:
+        student.profiles?.username || '',
+      displayName:
+        student.profiles?.display_name || '',
+      phone:
+        student.profiles?.phone || '',
+      address:
+        student.profiles?.address || '',
+      gender:
+        student.profiles?.gender || '',
+      dateOfBirth:
+        student.profiles?.date_of_birth || '',
+      level:
+        student.level || '',
+      status:
+        student.status || 'active',
+    })
+
+    setEditing(true)
+  }
+
+  function cancelEditing() {
+    setSaveError('')
+    setEditing(false)
+  }
+
+  async function handleSave(event) {
+    event.preventDefault()
+
+    setSaving(true)
+    setSaveError('')
+    setSaveSuccess('')
+
+    const { error } =
+      await supabase.rpc(
+        'admin_update_student',
+        {
+          p_student_id: student.id,
+          p_username: form.username,
+          p_display_name:
+            form.displayName,
+          p_phone: form.phone,
+          p_address: form.address,
+          p_gender: form.gender,
+          p_date_of_birth:
+            form.dateOfBirth || null,
+          p_level:
+            form.level || null,
+          p_status: form.status,
+        }
+      )
+
+    if (error) {
+      setSaveError(error.message)
+      setSaving(false)
+      return
+    }
+
+    setStudent((current) => ({
+      ...current,
+
+      level:
+        form.level || null,
+
+      status:
+        form.status,
+
+      profiles: {
+        ...current.profiles,
+
+        username:
+          form.username,
+
+        display_name:
+          form.displayName,
+
+        phone:
+          form.phone || null,
+
+        address:
+          form.address || null,
+
+        gender:
+          form.gender || null,
+
+        date_of_birth:
+          form.dateOfBirth || null,
+      },
+    }))
+
+    setSaveSuccess(
+      'Student profile updated successfully.'
+    )
+
+    setEditing(false)
+    setSaving(false)
+  }
+
+  async function loadAvailableParents() {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    setSelectedParentId('')
+    setParentRelationship('')
+    setParentIsPrimary(false)
 
     const {
       data,
-      error: fetchError,
+      error,
     } = await supabase
-      .from('students')
+      .from('parents')
       .select(`
         id,
-        join_date,
-        status,
-        level,
-
         profiles (
           display_name,
-          username,
-          phone,
-          address,
-          gender,
-          date_of_birth
-        ),
-
-        parent_students (
-          parent_id,
-          relationship,
-          is_primary,
-
-          parents (
-            id,
-
-            profiles (
-              display_name,
-              username
-            )
-          )
-        ),
-
-        coach_students (
-          coach_id,
-          started_at,
-          ended_at,
-
-          coaches (
-            id,
-
-            profiles (
-              display_name,
-              username
-            )
-          )
+          username
         )
       `)
-      .eq('id', studentId)
-      .single()
+      .order('created_at', {
+        ascending: true,
+      })
 
-    if (fetchError) {
-      setError(fetchError.message)
-      setLoading(false)
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
       return
     }
 
-    setStudent(data)
+    const existingIds =
+      parents.map((parent) => parent.id)
 
-    setUsername(
-      data.profiles?.username || ''
-    )
-
-    setDisplayName(
-      data.profiles?.display_name || ''
-    )
-
-    setPhone(
-      data.profiles?.phone || ''
-    )
-
-    setAddress(
-      data.profiles?.address || ''
-    )
-
-    setGender(
-      data.profiles?.gender || ''
-    )
-
-    setDateOfBirth(
-      data.profiles?.date_of_birth || ''
-    )
-
-    setJoinDate(
-      data.join_date || ''
-    )
-
-    setLevel(
-      data.level || ''
-    )
-
-    setStatus(
-      data.status || 'active'
-    )
-
-    /*
-     * Only ACTIVE coach relationships
-     * are displayed.
-     *
-     * Historical relationships with
-     * ended_at filled in stay in the
-     * database but are not displayed here.
-     */
-    const activeCoaches =
-      (data.coach_students || []).filter(
-        (item) => item.ended_at === null
+    setAvailableParents(
+      (data || []).filter(
+        (parent) =>
+          !existingIds.includes(parent.id)
       )
-
-    setCoaches(activeCoaches)
-
-    /*
-     * Parents currently remain active
-     * relationships.
-     */
-    setParents(
-      data.parent_students || []
     )
 
-    setLoading(false)
+    setShowParentSelector(true)
+    setShowCoachSelector(false)
+    setRelationshipLoading(false)
   }
 
-  useEffect(() => {
-    async function init() {
-      await Promise.all([
-        loadStudent(),
-        loadAvailablePeople(),
+  async function loadAvailableCoaches() {
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    setSelectedCoachId('')
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('coaches')
+      .select(`
+        id,
+        profiles (
+          display_name,
+          username
+        )
+      `)
+      .order('created_at', {
+        ascending: true,
+      })
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    /*
+     * Only currently active coaches are excluded.
+     *
+     * A coach that was previously removed is no
+     * longer inside `coaches`, so they will appear
+     * here and can be assigned again.
+     */
+    const existingIds =
+      coaches.map((coach) => coach.id)
+
+    setAvailableCoaches(
+      (data || []).filter(
+        (coach) =>
+          !existingIds.includes(coach.id)
+      )
+    )
+
+    setShowCoachSelector(true)
+    setShowParentSelector(false)
+    setRelationshipLoading(false)
+  }
+
+  function cancelParentSelector() {
+    setShowParentSelector(false)
+    setSelectedParentId('')
+    setParentRelationship('')
+    setParentIsPrimary(false)
+    setRelationshipError('')
+  }
+
+  function cancelCoachSelector() {
+    setShowCoachSelector(false)
+    setSelectedCoachId('')
+    setRelationshipError('')
+  }
+
+  async function addParent() {
+    if (!selectedParentId) {
+      setRelationshipError(
+        'Please select a parent.'
+      )
+      return
+    }
+
+    if (!parentRelationship) {
+      setRelationshipError(
+        'Please select the relationship.'
+      )
+      return
+    }
+
+    setRelationshipLoading(true)
+    setRelationshipError('')
+
+    const { error } =
+      await supabase.rpc(
+        'admin_add_parent_student',
+        {
+          p_parent_id:
+            selectedParentId,
+
+          p_student_id:
+            student.id,
+
+          p_relationship:
+            parentRelationship,
+
+          p_is_primary:
+            parentIsPrimary,
+        }
+      )
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
+      return
+    }
+
+    const parent =
+      availableParents.find(
+        (item) =>
+          item.id === selectedParentId
+      )
+
+    if (parent) {
+      setParents((current) => [
+        ...current,
+
+        {
+          ...parent,
+          relationship:
+            parentRelationship,
+          is_primary:
+            parentIsPrimary,
+        },
       ])
     }
 
-    init()
-  }, [studentId])
-
-  async function refreshData() {
-    await Promise.all([
-      loadStudent(),
-      loadAvailablePeople(),
-    ])
-  }
-
-  async function handleSave() {
-    setSaving(true)
-    setError('')
-    setSuccess('')
-
-    const {
-      error: saveError,
-    } = await supabase.rpc(
-      'admin_update_student',
-      {
-        p_student_id: student.id,
-        p_username: username,
-        p_display_name: displayName,
-        p_phone: phone,
-        p_address: address,
-        p_gender: gender,
-        p_date_of_birth:
-          dateOfBirth || null,
-        p_level: level,
-        p_status: status,
-      }
-    )
-
-    if (saveError) {
-      setError(saveError.message)
-      setSaving(false)
-      return
-    }
-
-    setSuccess(
-      'Student information updated successfully.'
-    )
-
-    await loadStudent()
-
-    setSaving(false)
-  }
-
-  async function handleAddParent() {
-    if (!selectedParentId) {
-      setError('Please select a parent.')
-      return
-    }
-
-    setSaving(true)
-    setError('')
-    setSuccess('')
-
-    const {
-      error: addError,
-    } = await supabase.rpc(
-      'admin_add_parent_student',
-      {
-        p_parent_id: selectedParentId,
-        p_student_id: student.id,
-        p_relationship:
-          parentRelationship,
-        p_is_primary:
-          parentIsPrimary,
-      }
-    )
-
-    if (addError) {
-      setError(addError.message)
-      setSaving(false)
-      return
-    }
-
-    setSuccess(
-      'Parent added successfully.'
-    )
-
+    setShowParentSelector(false)
     setSelectedParentId('')
-    setParentRelationship('Mother')
-    setParentIsPrimary(true)
-    setShowAddParent(false)
-
-    await refreshData()
-
-    setSaving(false)
+    setParentRelationship('')
+    setParentIsPrimary(false)
+    setRelationshipLoading(false)
   }
 
-  async function handleRemoveParent(
-    parentId
-  ) {
-    setSaving(true)
-    setError('')
-    setSuccess('')
+  async function removeParent(parentId) {
+    setRelationshipLoading(true)
+    setRelationshipError('')
 
-    const {
-      error: removeError,
-    } = await supabase.rpc(
-      'admin_remove_parent_student',
-      {
-        p_parent_id: parentId,
-        p_student_id: student.id,
-      }
-    )
+    const { error } =
+      await supabase.rpc(
+        'admin_remove_parent_student',
+        {
+          p_parent_id: parentId,
+          p_student_id: student.id,
+        }
+      )
 
-    if (removeError) {
-      setError(removeError.message)
-      setSaving(false)
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
       return
     }
 
-    setSuccess(
-      'Parent removed successfully.'
+    setParents((current) =>
+      current.filter(
+        (parent) =>
+          parent.id !== parentId
+      )
     )
 
-    await refreshData()
-
-    setSaving(false)
+    setRelationshipLoading(false)
   }
 
-  async function handleAddCoach() {
+  async function addCoach() {
     if (!selectedCoachId) {
-      setError('Please select a coach.')
+      setRelationshipError(
+        'Please select a coach.'
+      )
       return
     }
 
-    setSaving(true)
-    setError('')
-    setSuccess('')
+    setRelationshipLoading(true)
+    setRelationshipError('')
 
     const today =
       new Date()
         .toISOString()
         .split('T')[0]
 
-    const {
-      error: addError,
-    } = await supabase.rpc(
-      'admin_add_coach_student',
-      {
-        p_coach_id: selectedCoachId,
-        p_student_id: student.id,
-        p_started_at: today,
-      }
-    )
+    const { error } =
+      await supabase.rpc(
+        'admin_add_coach_student',
+        {
+          p_coach_id:
+            selectedCoachId,
 
-    if (addError) {
-      setError(addError.message)
-      setSaving(false)
+          p_student_id:
+            student.id,
+
+          p_started_at:
+            today,
+        }
+      )
+
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
       return
     }
 
-    setSuccess(
-      'Coach added successfully.'
-    )
+    const coach =
+      availableCoaches.find(
+        (item) =>
+          item.id === selectedCoachId
+      )
 
+    if (coach) {
+      setCoaches((current) => [
+        ...current,
+
+        {
+          ...coach,
+          started_at: today,
+          ended_at: null,
+        },
+      ])
+    }
+
+    setShowCoachSelector(false)
     setSelectedCoachId('')
-    setShowAddCoach(false)
-
-    await refreshData()
-
-    setSaving(false)
+    setRelationshipLoading(false)
   }
 
-  async function handleRemoveCoach(
-    coachId
-  ) {
-    setSaving(true)
-    setError('')
-    setSuccess('')
+  async function removeCoach(coachId) {
+    setRelationshipLoading(true)
+    setRelationshipError('')
 
     const today =
       new Date()
         .toISOString()
         .split('T')[0]
 
-    const {
-      error: removeError,
-    } = await supabase.rpc(
-      'admin_remove_coach_student',
-      {
-        p_coach_id: coachId,
-        p_student_id: student.id,
-        p_ended_at: today,
-      }
-    )
+    const { error } =
+      await supabase.rpc(
+        'admin_remove_coach_student',
+        {
+          p_coach_id: coachId,
+          p_student_id: student.id,
+          p_ended_at: today,
+        }
+      )
 
-    if (removeError) {
-      setError(removeError.message)
-      setSaving(false)
+    if (error) {
+      setRelationshipError(error.message)
+      setRelationshipLoading(false)
       return
     }
 
-    setSuccess(
-      'Coach removed successfully.'
+    setCoaches((current) =>
+      current.filter(
+        (coach) =>
+          coach.id !== coachId
+      )
     )
 
-    /*
-     * Reload from database.
-     *
-     * loadStudent() filters ended
-     * relationships, so the coach
-     * immediately disappears.
-     */
-    await refreshData()
-
-    setSaving(false)
+    setRelationshipLoading(false)
   }
 
   if (loading) {
     return (
       <div className="academy-app">
-        <AcademyHeader
-          user={user}
-          profile={profile}
-        />
+        <AcademyHeader />
 
-        <main className="academy-main">
-          <div className="loading">
-            Loading...
-          </div>
-        </main>
+        <div className="page-state">
+          Loading student...
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="error-page">
+        <h1>Chessnuts Academy</h1>
+
+        <p>{error}</p>
+
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            window.location.href =
+              '/students'
+          }}
+        >
+          Back to Students
+        </button>
       </div>
     )
   }
 
   if (!student) {
-    return (
-      <div className="academy-app">
-        <AcademyHeader
-          user={user}
-          profile={profile}
-        />
+    return null
+  }
 
-        <main className="academy-main">
-          <div className="error-box">
-            Student not found.
-          </div>
-        </main>
-      </div>
-    )
+  const displayName =
+    student.profiles?.display_name ||
+    'Unnamed Student'
+
+  const username =
+    student.profiles?.username || '—'
+
+  const formatDate = (value) => {
+    if (!value) {
+      return '—'
+    }
+
+    return new Date(
+      value
+    ).toLocaleDateString('en-GB')
   }
 
   return (
     <div className="academy-app">
-
-      <AcademyHeader
-        user={user}
-        profile={profile}
-      />
+      <AcademyHeader />
 
       <main className="academy-main">
-
-        <div className="detail-header">
-          <div>
-            <button
-              className="back-button"
-              onClick={() => {
-                window.location.href =
-                  '/students'
-              }}
-            >
-              ← Back to Students
-            </button>
-
-            <h1>
-              {displayName || 'Student'}
-            </h1>
-
-            <p>
-              Student details and
-              relationships
-            </p>
-          </div>
+        <div className="detail-back">
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              window.location.href =
+                '/students'
+            }}
+          >
+            ← Back to Students
+          </button>
         </div>
 
-        {error && (
-          <div className="error-box">
-            {error}
-          </div>
-        )}
+        <div className="detail-heading">
+          <h1>{displayName}</h1>
 
-        {success && (
+          <p>Student profile</p>
+        </div>
+
+        {saveSuccess && (
           <div className="success-card">
-            {success}
+            <div className="success-icon">
+              ✓
+            </div>
+
+            <p>{saveSuccess}</p>
           </div>
         )}
 
-        <div className="detail-grid">
-
-          {/* BASIC INFORMATION */}
-
-          <section className="card detail-card">
-
-            <div className="detail-card-header">
-              <div>
-                <h2>
+        {!editing ? (
+          <>
+            <section className="card detail-card">
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
                   Basic Information
                 </h2>
 
-                <p>
-                  Student profile
-                </p>
-              </div>
-            </div>
-
-            <div className="form-grid">
-
-              <div className="form-group">
-                <label>
-                  Username
-                </label>
-
-                <input
-                  className="form-input"
-                  value={username}
-                  onChange={(e) =>
-                    setUsername(
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label>
-                  Display Name
-                </label>
-
-                <input
-                  className="form-input"
-                  value={displayName}
-                  onChange={(e) =>
-                    setDisplayName(
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label>
-                  Phone
-                </label>
-
-                <input
-                  className="form-input"
-                  value={phone}
-                  onChange={(e) =>
-                    setPhone(
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label>
-                  Date of Birth
-                </label>
-
-                <input
-                  type="date"
-                  className="form-input"
-                  value={dateOfBirth}
-                  onChange={(e) =>
-                    setDateOfBirth(
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label>
-                  Gender
-                </label>
-
-                <select
-                  className="form-input"
-                  value={gender}
-                  onChange={(e) =>
-                    setGender(
-                      e.target.value
-                    )
-                  }
+                <button
+                  className="btn btn-primary"
+                  onClick={startEditing}
                 >
-                  <option value="">
-                    Select gender
-                  </option>
-
-                  <option value="Male">
-                    Male
-                  </option>
-
-                  <option value="Female">
-                    Female
-                  </option>
-                </select>
+                  Edit Student
+                </button>
               </div>
 
-              <div className="form-group">
-                <label>
-                  Join Date
-                </label>
+              <div className="detail-grid">
+                <div>
+                  <div className="detail-label">
+                    Name
+                  </div>
 
-                <input
-                  type="date"
-                  className="form-input"
-                  value={joinDate}
-                  onChange={(e) =>
-                    setJoinDate(
-                      e.target.value
-                    )
-                  }
-                />
+                  <div className="detail-value detail-value-strong">
+                    {displayName}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Username
+                  </div>
+
+                  <div className="detail-value">
+                    {username}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Phone
+                  </div>
+
+                  <div className="detail-value">
+                    {student.profiles
+                      ?.phone || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Gender
+                  </div>
+
+                  <div className="detail-value">
+                    {student.profiles
+                      ?.gender || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Address
+                  </div>
+
+                  <div className="detail-value">
+                    {student.profiles
+                      ?.address || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Date of Birth
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      student.profiles
+                        ?.date_of_birth
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Join Date
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      student.join_date
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Level
+                  </div>
+
+                  <div className="detail-value">
+                    {getStudentLevelLabel(
+                      student.level
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Status
+                  </div>
+
+                  <div className="detail-value">
+                    {student.status ||
+                      '—'}
+                  </div>
+                </div>
               </div>
+            </section>
 
-              <div className="form-group">
-                <label>
-                  Level
-                </label>
-
-                <select
-                  className="form-input"
-                  value={level}
-                  onChange={(e) =>
-                    setLevel(
-                      e.target.value
-                    )
-                  }
-                >
-                  <option value="">
-                    Select level
-                  </option>
-
-                  {STUDENT_LEVELS.map(
-                    (item) => (
-                      <option
-                        key={item.value}
-                        value={item.value}
-                      >
-                        {item.label}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>
-                  Status
-                </label>
-
-                <select
-                  className="form-input"
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(
-                      e.target.value
-                    )
-                  }
-                >
-                  <option value="active">
-                    Active
-                  </option>
-
-                  <option value="inactive">
-                    Inactive
-                  </option>
-                </select>
-              </div>
-
-              <div className="form-group form-full">
-                <label>
-                  Address
-                </label>
-
-                <textarea
-                  className="form-input"
-                  rows="3"
-                  value={address}
-                  onChange={(e) =>
-                    setAddress(
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-
-            </div>
-
-            <div className="detail-actions">
-
-              <button
-                className="primary-button"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving
-                  ? 'Saving...'
-                  : 'Save Changes'}
-              </button>
-
-            </div>
-
-          </section>
-
-
-          {/* PARENTS */}
-
-          <section className="card detail-card">
-
-            <div className="detail-card-header">
-
-              <div>
-                <h2>
+            <section className="card detail-card">
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
                   Parents
                 </h2>
 
-                <p>
-                  Parents linked to
-                  this student
-                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={
+                    loadAvailableParents
+                  }
+                  disabled={
+                    relationshipLoading
+                  }
+                >
+                  + Add Parent
+                </button>
               </div>
 
-              <button
-                className="secondary-button"
-                onClick={() =>
-                  setShowAddParent(
-                    !showAddParent
-                  )
-                }
-              >
-                + Add Parent
-              </button>
+              {relationshipError && (
+                <div className="error-box">
+                  {relationshipError}
+                </div>
+              )}
 
-            </div>
-
-            {showAddParent && (
-              <div className="relationship-form">
-
+              {showParentSelector && (
                 <div className="form-group">
-
-                  <label>
+                  <label className="form-label">
                     Parent
                   </label>
 
                   <select
-                    className="form-input"
+                    className="form-select"
                     value={selectedParentId}
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setSelectedParentId(
-                        e.target.value
+                        event.target.value
                       )
                     }
+                    disabled={
+                      relationshipLoading
+                    }
                   >
-
                     <option value="">
-                      Select parent
+                      Select a parent
                     </option>
 
-                    {allParents
-                      .filter(
-                        (parent) =>
-                          !parents.some(
-                            (item) =>
-                              item.parent_id ===
-                              parent.id
-                          )
+                    {availableParents.map(
+                      (parent) => (
+                        <option
+                          key={parent.id}
+                          value={parent.id}
+                        >
+                          {parent.profiles
+                            ?.display_name ||
+                            'Unnamed Parent'}
+                        </option>
                       )
-                      .map(
-                        (parent) => (
-                          <option
-                            key={parent.id}
-                            value={parent.id}
-                          >
-                            {parent.profiles
-                              ?.display_name ||
-                              parent.profiles
-                                ?.username ||
-                              'Parent'}
-                          </option>
-                        )
-                      )}
-
+                    )}
                   </select>
 
-                </div>
+                  {availableParents.length ===
+                    0 && (
+                    <div className="form-help">
+                      No available parents.
+                    </div>
+                  )}
 
-                <div className="form-group">
-
-                  <label>
+                  <label className="form-label">
                     Relationship
                   </label>
 
                   <select
-                    className="form-input"
+                    className="form-select"
                     value={
                       parentRelationship
                     }
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setParentRelationship(
-                        e.target.value
+                        event.target.value
                       )
                     }
+                    disabled={
+                      relationshipLoading
+                    }
                   >
+                    <option value="">
+                      Select relationship
+                    </option>
+
                     <option value="Mother">
                       Mother
                     </option>
@@ -882,306 +905,519 @@ function StudentDetail({
                     </option>
                   </select>
 
-                </div>
-
-                <div className="form-group">
-
-                  <label>
-                    Primary
+                  <label className="form-label">
+                    Primary Parent
                   </label>
 
                   <select
-                    className="form-input"
+                    className="form-select"
                     value={
                       parentIsPrimary
-                        ? 'yes'
-                        : 'no'
+                        ? 'true'
+                        : 'false'
                     }
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setParentIsPrimary(
-                        e.target.value ===
-                          'yes'
+                        event.target.value ===
+                          'true'
                       )
                     }
+                    disabled={
+                      relationshipLoading
+                    }
                   >
-                    <option value="yes">
-                      Yes
+                    <option value="false">
+                      No
                     </option>
 
-                    <option value="no">
-                      No
+                    <option value="true">
+                      Yes
                     </option>
                   </select>
 
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={addParent}
+                      disabled={
+                        relationshipLoading ||
+                        !selectedParentId ||
+                        !parentRelationship
+                      }
+                    >
+                      {relationshipLoading
+                        ? 'Adding...'
+                        : 'Add Parent'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={
+                        cancelParentSelector
+                      }
+                      disabled={
+                        relationshipLoading
+                      }
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-
-                <div className="relationship-actions">
-
-                  <button
-                    className="primary-button"
-                    onClick={
-                      handleAddParent
-                    }
-                    disabled={saving}
-                  >
-                    Add Parent
-                  </button>
-
-                  <button
-                    className="secondary-button"
-                    onClick={() =>
-                      setShowAddParent(
-                        false
-                      )
-                    }
-                  >
-                    Cancel
-                  </button>
-
-                </div>
-
-              </div>
-            )}
-
-            <div className="relationship-list">
-
-              {parents.length === 0 ? (
-                <p className="empty-state">
-                  No parents linked.
-                </p>
-              ) : (
-                parents.map(
-                  (item) => {
-
-                    const parent =
-                      item.parents
-
-                    return (
-                      <div
-                        className="relationship-row"
-                        key={
-                          item.parent_id
-                        }
-                      >
-
-                        <div>
-
-                          <strong>
-                            {parent?.profiles
-                              ?.display_name ||
-                              parent?.profiles
-                                ?.username ||
-                              'Parent'}
-                          </strong>
-
-                          <span>
-                            {item.relationship ||
-                              'Parent'}
-
-                            {item.is_primary
-                              ? ' • Primary'
-                              : ''}
-                          </span>
-
-                        </div>
-
-                        <button
-                          className="danger-button"
-                          onClick={() =>
-                            handleRemoveParent(
-                              item.parent_id
-                            )
-                          }
-                          disabled={saving}
-                        >
-                          Remove
-                        </button>
-
-                      </div>
-                    )
-                  }
-                )
               )}
 
-            </div>
+              {parents.length === 0 ? (
+                <div className="empty-state">
+                  No parents assigned.
+                </div>
+              ) : (
+                <div className="detail-grid">
+                  {parents.map((parent) => (
+                    <div key={parent.id}>
+                      <div className="detail-label">
+                        Parent
+                      </div>
 
-          </section>
+                      <div className="detail-value detail-value-strong">
+                        {parent.profiles
+                          ?.display_name ||
+                          'Unnamed Parent'}
+                      </div>
 
+                      {parent.profiles
+                        ?.username && (
+                        <div className="detail-value">
+                          @{parent.profiles.username}
+                        </div>
+                      )}
 
-          {/* COACHES */}
+                      <div className="detail-label">
+                        Relationship
+                      </div>
 
-          <section className="card detail-card">
+                      <div className="detail-value">
+                        {parent.relationship ||
+                          '—'}
+                      </div>
 
-            <div className="detail-card-header">
+                      <div className="detail-label">
+                        Primary
+                      </div>
 
-              <div>
-                <h2>
+                      <div className="detail-value">
+                        {parent.is_primary
+                          ? 'Yes'
+                          : 'No'}
+                      </div>
+
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() =>
+                          removeParent(
+                            parent.id
+                          )
+                        }
+                        disabled={
+                          relationshipLoading
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="card detail-card">
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
                   Coaches
                 </h2>
 
-                <p>
-                  Active coaches linked
-                  to this student
-                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={
+                    loadAvailableCoaches
+                  }
+                  disabled={
+                    relationshipLoading
+                  }
+                >
+                  + Add Coach
+                </button>
               </div>
 
-              <button
-                className="secondary-button"
-                onClick={() =>
-                  setShowAddCoach(
-                    !showAddCoach
-                  )
-                }
-              >
-                + Add Coach
-              </button>
+              {relationshipError && (
+                <div className="error-box">
+                  {relationshipError}
+                </div>
+              )}
 
-            </div>
-
-            {showAddCoach && (
-              <div className="relationship-form">
-
+              {showCoachSelector && (
                 <div className="form-group">
-
-                  <label>
+                  <label className="form-label">
                     Coach
                   </label>
 
                   <select
-                    className="form-input"
+                    className="form-select"
                     value={selectedCoachId}
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setSelectedCoachId(
-                        e.target.value
+                        event.target.value
                       )
                     }
+                    disabled={
+                      relationshipLoading
+                    }
                   >
-
                     <option value="">
-                      Select coach
+                      Select a coach
                     </option>
 
-                    {allCoaches
-                      .filter(
-                        (coach) =>
-                          !coaches.some(
-                            (item) =>
-                              item.coach_id ===
-                              coach.id
-                          )
+                    {availableCoaches.map(
+                      (coach) => (
+                        <option
+                          key={coach.id}
+                          value={coach.id}
+                        >
+                          {coach.profiles
+                            ?.display_name ||
+                            'Unnamed Coach'}
+                        </option>
                       )
-                      .map(
-                        (coach) => (
-                          <option
-                            key={coach.id}
-                            value={coach.id}
-                          >
-                            {coach.profiles
-                              ?.display_name ||
-                              coach.profiles
-                                ?.username ||
-                              'Coach'}
-                          </option>
-                        )
-                      )}
-
+                    )}
                   </select>
 
+                  {availableCoaches.length ===
+                    0 && (
+                    <div className="form-help">
+                      No available coaches.
+                    </div>
+                  )}
+
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={addCoach}
+                      disabled={
+                        relationshipLoading ||
+                        !selectedCoachId
+                      }
+                    >
+                      {relationshipLoading
+                        ? 'Adding...'
+                        : 'Add Coach'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={
+                        cancelCoachSelector
+                      }
+                      disabled={
+                        relationshipLoading
+                      }
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
+              )}
 
-                <div className="relationship-actions">
-
-                  <button
-                    className="primary-button"
-                    onClick={
-                      handleAddCoach
-                    }
-                    disabled={saving}
-                  >
-                    Add Coach
-                  </button>
-
-                  <button
-                    className="secondary-button"
-                    onClick={() =>
-                      setShowAddCoach(
-                        false
-                      )
-                    }
-                  >
-                    Cancel
-                  </button>
-
+              {coaches.length === 0 ? (
+                <div className="empty-state">
+                  No coaches assigned.
                 </div>
+              ) : (
+                <div className="detail-grid">
+                  {coaches.map((coach) => (
+                    <div key={coach.id}>
+                      <div className="detail-label">
+                        Coach
+                      </div>
 
+                      <div className="detail-value detail-value-strong">
+                        {coach.profiles
+                          ?.display_name ||
+                          'Unnamed Coach'}
+                      </div>
+
+                      {coach.profiles
+                        ?.username && (
+                        <div className="detail-value">
+                          @{coach.profiles.username}
+                        </div>
+                      )}
+
+                      <div className="detail-label">
+                        Started
+                      </div>
+
+                      <div className="detail-value">
+                        {formatDate(
+                          coach.started_at
+                        )}
+                      </div>
+
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() =>
+                          removeCoach(
+                            coach.id
+                          )
+                        }
+                        disabled={
+                          relationshipLoading
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        ) : (
+          <form
+            className="card form-card"
+            onSubmit={handleSave}
+          >
+            <div className="form-header">
+              <h1>Edit Student</h1>
+
+              <p>
+                Update this student's
+                profile and Academy
+                information.
+              </p>
+            </div>
+
+            {saveError && (
+              <div className="error-box">
+                {saveError}
               </div>
             )}
 
-            <div className="relationship-list">
+            <div className="form-group">
+              <label className="form-label">
+                Display Name
+              </label>
 
-              {coaches.length === 0 ? (
-                <p className="empty-state">
-                  No active coaches linked.
-                </p>
-              ) : (
-                coaches.map(
-                  (item) => {
-
-                    const coach =
-                      item.coaches
-
-                    return (
-                      <div
-                        className="relationship-row"
-                        key={
-                          item.coach_id
-                        }
-                      >
-
-                        <div>
-
-                          <strong>
-                            {coach?.profiles
-                              ?.display_name ||
-                              coach?.profiles
-                                ?.username ||
-                              'Coach'}
-                          </strong>
-
-                          <span>
-                            Started{' '}
-                            {item.started_at ||
-                              '-'}
-                          </span>
-
-                        </div>
-
-                        <button
-                          className="danger-button"
-                          onClick={() =>
-                            handleRemoveCoach(
-                              item.coach_id
-                            )
-                          }
-                          disabled={saving}
-                        >
-                          Remove
-                        </button>
-
-                      </div>
-                    )
-                  }
-                )
-              )}
-
+              <input
+                className="form-input"
+                type="text"
+                value={
+                  form.displayName
+                }
+                onChange={(event) =>
+                  updateField(
+                    'displayName',
+                    event.target.value
+                  )
+                }
+                required
+              />
             </div>
 
-          </section>
+            <div className="form-group">
+              <label className="form-label">
+                Username
+              </label>
 
-        </div>
+              <input
+                className="form-input"
+                type="text"
+                value={
+                  form.username
+                }
+                onChange={(event) =>
+                  updateField(
+                    'username',
+                    event.target.value
+                  )
+                }
+                required
+              />
 
+              <div className="form-help">
+                Letters, numbers, and
+                underscores only.
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Phone
+              </label>
+
+              <input
+                className="form-input"
+                type="text"
+                value={form.phone}
+                onChange={(event) =>
+                  updateField(
+                    'phone',
+                    event.target.value
+                  )
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Gender
+              </label>
+
+              <select
+                className="form-select"
+                value={form.gender}
+                onChange={(event) =>
+                  updateField(
+                    'gender',
+                    event.target.value
+                  )
+                }
+              >
+                <option value="">
+                  Select gender
+                </option>
+
+                <option value="male">
+                  Male
+                </option>
+
+                <option value="female">
+                  Female
+                </option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Address
+              </label>
+
+              <input
+                className="form-input"
+                type="text"
+                value={
+                  form.address
+                }
+                onChange={(event) =>
+                  updateField(
+                    'address',
+                    event.target.value
+                  )
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Date of Birth
+              </label>
+
+              <input
+                className="form-input"
+                type="date"
+                value={
+                  form.dateOfBirth
+                }
+                onChange={(event) =>
+                  updateField(
+                    'dateOfBirth',
+                    event.target.value
+                  )
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Level
+              </label>
+
+              <select
+                className="form-select"
+                value={form.level}
+                onChange={(event) =>
+                  updateField(
+                    'level',
+                    event.target.value
+                  )
+                }
+              >
+                <option value="">
+                  Select level
+                </option>
+
+                {STUDENT_LEVELS.map(
+                  (level) => (
+                    <option
+                      key={level.value}
+                      value={level.value}
+                    >
+                      {level.label}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Status
+              </label>
+
+              <select
+                className="form-select"
+                value={form.status}
+                onChange={(event) =>
+                  updateField(
+                    'status',
+                    event.target.value
+                  )
+                }
+              >
+                <option value="active">
+                  Active
+                </option>
+
+                <option value="inactive">
+                  Inactive
+                </option>
+              </select>
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={saving}
+              >
+                {saving
+                  ? 'Saving...'
+                  : 'Save Changes'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={cancelEditing}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
       </main>
-
     </div>
   )
 }
