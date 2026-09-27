@@ -15,7 +15,7 @@ import Parents from './pages/Parents'
 import ParentDetail from './pages/ParentDetail'
 import AddParent from './pages/AddParent'
 
-import Schedule from './pages/Schedule'
+import Schedule from './pages/Schedules'
 import Availability from './pages/Availability'
 
 function App() {
@@ -285,7 +285,7 @@ function App() {
      SCHEDULE
   ========================= */
 
-  if (path === '/schedule') {
+  if (path === '/schedules') {
     return (
       <Schedule
         user={user}
@@ -294,7 +294,7 @@ function App() {
     )
   }
 
-  if (path === '/schedule/availability') {
+  if (path === '/schedules/availability') {
     return (
       <Availability
         user={user}
