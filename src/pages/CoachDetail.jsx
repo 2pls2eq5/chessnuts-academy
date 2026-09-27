@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import AcademyHeader from '../components/AcademyHeader'
+import {
+  getStudentLevelLabel,
+} from '../constants/studentLevels'
 
 function CoachDetail({ coachId }) {
   const [loading, setLoading] = useState(true)
@@ -45,6 +48,20 @@ function CoachDetail({ coachId }) {
             address,
             gender,
             date_of_birth
+          ),
+          coach_students (
+            student_id,
+            started_at,
+            ended_at,
+            students (
+              id,
+              level,
+              status,
+              profiles (
+                display_name,
+                username
+              )
+            )
           )
         `)
         .eq('id', coachId)
@@ -273,6 +290,17 @@ function CoachDetail({ coachId }) {
     ).toLocaleDateString('en-GB')
   }
 
+  const students =
+    (coach.coach_students || [])
+      .filter(
+        (item) =>
+          item.students &&
+          item.ended_at === null
+      )
+      .map((item) => ({
+        ...item.students,
+      }))
+
   return (
     <div className="academy-app">
       <AcademyHeader />
@@ -308,129 +336,199 @@ function CoachDetail({ coachId }) {
         )}
 
         {!editing ? (
-          <section className="card detail-card">
+          <>
+            <section className="card detail-card">
 
-            <div className="detail-card-header">
-              <h2 className="detail-card-title">
-                Basic Information
-              </h2>
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
+                  Basic Information
+                </h2>
 
-              <button
-                className="btn btn-primary"
-                onClick={startEditing}
-              >
-                Edit Coach
-              </button>
-            </div>
-
-            <div className="detail-grid">
-
-              <div>
-                <div className="detail-label">
-                  Name
-                </div>
-
-                <div className="detail-value detail-value-strong">
-                  {displayName}
-                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={startEditing}
+                >
+                  Edit Coach
+                </button>
               </div>
 
-              <div>
-                <div className="detail-label">
-                  Username
+              <div className="detail-grid">
+
+                <div>
+                  <div className="detail-label">
+                    Name
+                  </div>
+
+                  <div className="detail-value detail-value-strong">
+                    {displayName}
+                  </div>
                 </div>
 
-                <div className="detail-value">
-                  {username}
+                <div>
+                  <div className="detail-label">
+                    Username
+                  </div>
+
+                  <div className="detail-value">
+                    {username}
+                  </div>
                 </div>
+
+                <div>
+                  <div className="detail-label">
+                    Phone
+                  </div>
+
+                  <div className="detail-value">
+                    {
+                      coach.profiles?.phone ||
+                      '—'
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Gender
+                  </div>
+
+                  <div className="detail-value">
+                    {
+                      coach.profiles?.gender ||
+                      '—'
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Address
+                  </div>
+
+                  <div className="detail-value">
+                    {
+                      coach.profiles?.address ||
+                      '—'
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Date of Birth
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      coach.profiles
+                        ?.date_of_birth
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Join Date
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      coach.join_date
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Status
+                  </div>
+
+                  <div className="detail-value">
+                    {coach.status || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Bio
+                  </div>
+
+                  <div className="detail-value">
+                    {coach.bio || '—'}
+                  </div>
+                </div>
+
+              </div>
+            </section>
+
+            <section
+              className="card detail-card"
+              style={{
+                marginTop: '32px',
+              }}
+            >
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
+                  Students
+                </h2>
               </div>
 
-              <div>
-                <div className="detail-label">
-                  Phone
+              {students.length === 0 ? (
+                <div className="empty-state">
+                  No students assigned.
                 </div>
+              ) : (
+                <div className="detail-grid">
+                  {students.map((student) => (
+                    <div
+                      key={student.id}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '18px',
+                      }}
+                    >
+                      <div>
+                        <div className="detail-label">
+                          Student
+                        </div>
 
-                <div className="detail-value">
-                  {
-                    coach.profiles?.phone ||
-                    '—'
-                  }
+                        <div className="detail-value detail-value-strong">
+                          {
+                            student.profiles
+                              ?.display_name ||
+                            'Unnamed Student'
+                          }
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="detail-label">
+                          Level
+                        </div>
+
+                        <div className="detail-value">
+                          {getStudentLevelLabel(
+                            student.level
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="detail-label">
+                          Status
+                        </div>
+
+                        <div className="detail-value">
+                          {student.status || '—'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Gender
-                </div>
-
-                <div className="detail-value">
-                  {
-                    coach.profiles?.gender ||
-                    '—'
-                  }
-                </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Address
-                </div>
-
-                <div className="detail-value">
-                  {
-                    coach.profiles?.address ||
-                    '—'
-                  }
-                </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Date of Birth
-                </div>
-
-                <div className="detail-value">
-                  {formatDate(
-                    coach.profiles
-                      ?.date_of_birth
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Join Date
-                </div>
-
-                <div className="detail-value">
-                  {formatDate(
-                    coach.join_date
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Status
-                </div>
-
-                <div className="detail-value">
-                  {coach.status || '—'}
-                </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Bio
-                </div>
-
-                <div className="detail-value">
-                  {coach.bio || '—'}
-                </div>
-              </div>
-
-            </div>
-          </section>
+              )}
+            </section>
+          </>
         ) : (
           <form
             className="card form-card"
