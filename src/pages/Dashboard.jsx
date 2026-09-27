@@ -134,22 +134,6 @@ function Dashboard({ user, profile }) {
             </div>
           </div>
         </div>
-
-        <section className="quick-actions">
-          <h2 className="section-title">
-            Quick Actions
-          </h2>
-
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              window.location.href =
-                '/students'
-            }}
-          >
-            View Students
-          </button>
-        </section>
       </main>
     </div>
   )
