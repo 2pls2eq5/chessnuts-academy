@@ -43,9 +43,6 @@ function StudentDetail({ studentId }) {
   const [parentRelationship, setParentRelationship] =
     useState('')
 
-  const [parentIsPrimary, setParentIsPrimary] =
-    useState(false)
-
   const [selectedCoachId, setSelectedCoachId] =
     useState('')
 
@@ -86,7 +83,6 @@ function StudentDetail({ studentId }) {
           parent_students (
             parent_id,
             relationship,
-            is_primary,
             parents (
               id,
               profiles (
@@ -126,8 +122,6 @@ function StudentDetail({ studentId }) {
             ...item.parents,
             relationship:
               item.relationship || '',
-            is_primary:
-              item.is_primary || false,
           }))
       )
 
@@ -288,7 +282,6 @@ function StudentDetail({ studentId }) {
 
     setSelectedParentId('')
     setParentRelationship('')
-    setParentIsPrimary(false)
 
     const {
       data,
@@ -374,7 +367,6 @@ function StudentDetail({ studentId }) {
     setShowParentSelector(false)
     setSelectedParentId('')
     setParentRelationship('')
-    setParentIsPrimary(false)
     setRelationshipError('')
   }
 
@@ -414,9 +406,6 @@ function StudentDetail({ studentId }) {
 
           p_relationship:
             parentRelationship,
-
-          p_is_primary:
-            parentIsPrimary,
         }
       )
 
@@ -440,8 +429,6 @@ function StudentDetail({ studentId }) {
           ...parent,
           relationship:
             parentRelationship,
-          is_primary:
-            parentIsPrimary,
         },
       ])
     }
@@ -449,7 +436,6 @@ function StudentDetail({ studentId }) {
     setShowParentSelector(false)
     setSelectedParentId('')
     setParentRelationship('')
-    setParentIsPrimary(false)
     setRelationshipLoading(false)
   }
 
@@ -903,36 +889,6 @@ function StudentDetail({ studentId }) {
 
                       <option value="Other">
                         Other
-                      </option>
-                    </select>
-
-                    <label className="form-label">
-                      Primary Parent
-                    </label>
-
-                    <select
-                      className="form-select"
-                      value={
-                        parentIsPrimary
-                          ? 'true'
-                          : 'false'
-                      }
-                      onChange={(event) =>
-                        setParentIsPrimary(
-                          event.target.value ===
-                            'true'
-                        )
-                      }
-                      disabled={
-                        relationshipLoading
-                      }
-                    >
-                      <option value="false">
-                        No
-                      </option>
-
-                      <option value="true">
-                        Yes
                       </option>
                     </select>
 
