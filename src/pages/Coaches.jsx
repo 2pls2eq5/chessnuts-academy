@@ -20,7 +20,6 @@ function Coaches() {
         .from('coaches')
         .select(`
           id,
-          date_of_birth,
           join_date,
           status,
           bio,
