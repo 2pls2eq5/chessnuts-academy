@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import AcademyHeader from '../components/AcademyHeader'
+import {
+  getStudentLevelLabel,
+} from '../constants/studentLevels'
 
 function ParentDetail({ parentId }) {
   const [loading, setLoading] = useState(true)
@@ -236,6 +239,16 @@ function ParentDetail({ parentId }) {
     ).toLocaleDateString('en-GB')
   }
 
+  const children =
+    (parent.parent_students || [])
+      .filter(
+        (item) =>
+          item.students
+      )
+      .map((item) => ({
+        ...item.students,
+      }))
+
   return (
     <div className="academy-app">
       <AcademyHeader />
@@ -270,100 +283,169 @@ function ParentDetail({ parentId }) {
         )}
 
         {!editing ? (
-          <section className="card detail-card">
-            <div className="detail-card-header">
-              <h2 className="detail-card-title">
-                Basic Information
-              </h2>
+          <>
+            <section className="card detail-card">
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
+                  Basic Information
+                </h2>
 
-              <button
-                className="btn btn-primary"
-                onClick={startEditing}
-              >
-                Edit Parent
-              </button>
-            </div>
-
-            <div className="detail-grid">
-              <div>
-                <div className="detail-label">
-                  Name
-                </div>
-
-                <div className="detail-value detail-value-strong">
-                  {displayName}
-                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={startEditing}
+                >
+                  Edit Parent
+                </button>
               </div>
 
-              <div>
-                <div className="detail-label">
-                  Username
+              <div className="detail-grid">
+                <div>
+                  <div className="detail-label">
+                    Name
+                  </div>
+
+                  <div className="detail-value detail-value-strong">
+                    {displayName}
+                  </div>
                 </div>
 
-                <div className="detail-value">
-                  {username}
+                <div>
+                  <div className="detail-label">
+                    Username
+                  </div>
+
+                  <div className="detail-value">
+                    {username}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Phone
+                  </div>
+
+                  <div className="detail-value">
+                    {parent.profiles
+                      ?.phone || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Gender
+                  </div>
+
+                  <div className="detail-value">
+                    {parent.profiles
+                      ?.gender || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Address
+                  </div>
+
+                  <div className="detail-value">
+                    {parent.profiles
+                      ?.address || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Date of Birth
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      parent.profiles
+                        ?.date_of_birth
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="detail-label">
+                    Joined
+                  </div>
+
+                  <div className="detail-value">
+                    {formatDate(
+                      parent.created_at
+                    )}
+                  </div>
                 </div>
               </div>
+            </section>
 
-              <div>
-                <div className="detail-label">
-                  Phone
-                </div>
-
-                <div className="detail-value">
-                  {parent.profiles
-                    ?.phone || '—'}
-                </div>
+            <section
+              className="card detail-card"
+              style={{
+                marginTop: '32px',
+              }}
+            >
+              <div className="detail-card-header">
+                <h2 className="detail-card-title">
+                  Children
+                </h2>
               </div>
 
-              <div>
-                <div className="detail-label">
-                  Gender
+              {children.length === 0 ? (
+                <div className="empty-state">
+                  No children assigned.
                 </div>
+              ) : (
+                <div className="detail-grid">
+                  {children.map((child) => (
+                    <div
+                      key={child.id}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '18px',
+                      }}
+                    >
+                      <div>
+                        <div className="detail-label">
+                          Student
+                        </div>
 
-                <div className="detail-value">
-                  {parent.profiles
-                    ?.gender || '—'}
-                </div>
-              </div>
+                        <div className="detail-value detail-value-strong">
+                          {child.profiles
+                            ?.display_name ||
+                            'Unnamed Student'}
+                        </div>
+                      </div>
 
-              <div>
-                <div className="detail-label">
-                  Address
-                </div>
+                      <div>
+                        <div className="detail-label">
+                          Level
+                        </div>
 
-                <div className="detail-value">
-                  {parent.profiles
-                    ?.address || '—'}
-                </div>
-              </div>
+                        <div className="detail-value">
+                          {getStudentLevelLabel(
+                            child.level
+                          )}
+                        </div>
+                      </div>
 
-              <div>
-                <div className="detail-label">
-                  Date of Birth
-                </div>
+                      <div>
+                        <div className="detail-label">
+                          Status
+                        </div>
 
-                <div className="detail-value">
-                  {formatDate(
-                    parent.profiles
-                      ?.date_of_birth
-                  )}
+                        <div className="detail-value">
+                          {child.status ||
+                            '—'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              <div>
-                <div className="detail-label">
-                  Joined
-                </div>
-
-                <div className="detail-value">
-                  {formatDate(
-                    parent.created_at
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
+              )}
+            </section>
+          </>
         ) : (
           <form
             className="card form-card"
