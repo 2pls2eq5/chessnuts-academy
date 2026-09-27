@@ -23,9 +23,9 @@ function AcademyHeader() {
       active: path.startsWith('/parents'),
     },
     {
-      label: 'Schedule',
-      path: '/schedule',
-      active: path.startsWith('/schedule'),
+      label: 'Schedules',
+      path: '/schedules',
+      active: path.startsWith('/schedules'),
     },
     {
       label: 'Payments',
