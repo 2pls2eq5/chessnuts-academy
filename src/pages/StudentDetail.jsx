@@ -272,138 +272,122 @@ function StudentDetail({ studentId }) {
         )}
 
         {!editing ? (
-          <>
-            <section className="card detail-card">
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent:
-                    'space-between',
-                  gap: '20px',
-                  marginBottom: '24px',
-                }}
+          <section className="card detail-card">
+            <div className="detail-card-header">
+              <h2 className="detail-card-title">
+                Basic Information
+              </h2>
+
+              <button
+                className="btn btn-primary"
+                onClick={startEditing}
               >
-                <h2
-                  className="detail-card-title"
-                  style={{
-                    marginBottom: 0,
-                  }}
-                >
-                  Basic Information
-                </h2>
+                Edit Student
+              </button>
+            </div>
 
-                <button
-                  className="btn btn-primary"
-                  onClick={startEditing}
-                >
-                  Edit Student
-                </button>
-              </div>
-
-              <div className="detail-grid">
-                <div>
-                  <div className="detail-label">
-                    Name
-                  </div>
-
-                  <div className="detail-value detail-value-strong">
-                    {displayName}
-                  </div>
+            <div className="detail-grid">
+              <div>
+                <div className="detail-label">
+                  Name
                 </div>
 
-                <div>
-                  <div className="detail-label">
-                    Username
-                  </div>
-
-                  <div className="detail-value">
-                    {username}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="detail-label">
-                    Phone
-                  </div>
-
-                  <div className="detail-value">
-                    {student.profiles
-                      ?.phone || '—'}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="detail-label">
-                    Gender
-                  </div>
-
-                  <div className="detail-value">
-                    {student.profiles
-                      ?.gender || '—'}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="detail-label">
-                    Address
-                  </div>
-
-                  <div className="detail-value">
-                    {student.profiles
-                      ?.address || '—'}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="detail-label">
-                    Date of Birth
-                  </div>
-
-                  <div className="detail-value">
-                    {formatDate(
-                      student.date_of_birth
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="detail-label">
-                    Join Date
-                  </div>
-
-                  <div className="detail-value">
-                    {formatDate(
-                      student.join_date
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="detail-label">
-                    Level
-                  </div>
-
-                  <div className="detail-value">
-                    {getStudentLevelLabel(
-                      student.level
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="detail-label">
-                    Status
-                  </div>
-
-                  <div className="detail-value">
-                    {student.status ||
-                      '—'}
-                  </div>
+                <div className="detail-value detail-value-strong">
+                  {displayName}
                 </div>
               </div>
-            </section>
-          </>
+
+              <div>
+                <div className="detail-label">
+                  Username
+                </div>
+
+                <div className="detail-value">
+                  {username}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Phone
+                </div>
+
+                <div className="detail-value">
+                  {student.profiles
+                    ?.phone || '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Gender
+                </div>
+
+                <div className="detail-value">
+                  {student.profiles
+                    ?.gender || '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Address
+                </div>
+
+                <div className="detail-value">
+                  {student.profiles
+                    ?.address || '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Date of Birth
+                </div>
+
+                <div className="detail-value">
+                  {formatDate(
+                    student.date_of_birth
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Join Date
+                </div>
+
+                <div className="detail-value">
+                  {formatDate(
+                    student.join_date
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Level
+                </div>
+
+                <div className="detail-value">
+                  {getStudentLevelLabel(
+                    student.level
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="detail-label">
+                  Status
+                </div>
+
+                <div className="detail-value">
+                  {student.status ||
+                    '—'}
+                </div>
+              </div>
+            </div>
+          </section>
         ) : (
           <form
             className="card form-card"
@@ -616,13 +600,7 @@ function StudentDetail({ studentId }) {
               </select>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: '10px',
-                marginTop: '24px',
-              }}
-            >
+            <div className="form-actions">
               <button
                 type="submit"
                 className="btn btn-primary"
