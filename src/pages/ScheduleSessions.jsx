@@ -385,11 +385,11 @@ function ScheduleSessions() {
   }
 
   /*
-    Return the current date/time represented
+    Get the current date/time represented
     in the schedule timezone.
 
-    This is only used by the frontend to decide
-    which actions should be displayed.
+    This is only used by the frontend
+    to control the Complete button.
   */
   function getNowInScheduleTimezone() {
     const timezone =
@@ -937,26 +937,34 @@ function ScheduleSessions() {
                                           {session.status ===
                                           'scheduled' ? (
                                             <div className="schedule-actions">
-                                              {sessionFinished && (
-                                                <button
-                                                  className="btn btn-secondary"
-                                                  disabled={
-                                                    isActionLoading ||
-                                                    rescheduleSession !==
-                                                      null
-                                                  }
-                                                  onClick={() =>
-                                                    handleCompleteSession(
-                                                      session
-                                                    )
-                                                  }
-                                                >
-                                                  {isActionLoading &&
-                                                  !isRescheduling
-                                                    ? 'Working...'
-                                                    : 'Complete'}
-                                                </button>
-                                              )}
+                                              {/* Complete */}
+
+                                              <button
+                                                className="btn btn-secondary"
+                                                disabled={
+                                                  !sessionFinished ||
+                                                  isActionLoading ||
+                                                  rescheduleSession !==
+                                                    null
+                                                }
+                                                title={
+                                                  !sessionFinished
+                                                    ? 'Available after the session ends'
+                                                    : 'Complete session'
+                                                }
+                                                onClick={() =>
+                                                  handleCompleteSession(
+                                                    session
+                                                  )
+                                                }
+                                              >
+                                                {isActionLoading &&
+                                                !isRescheduling
+                                                  ? 'Working...'
+                                                  : 'Complete'}
+                                              </button>
+
+                                              {/* Forfeit */}
 
                                               <button
                                                 className="btn btn-ghost"
@@ -974,6 +982,8 @@ function ScheduleSessions() {
                                                 Forfeit
                                               </button>
 
+                                              {/* Reschedule */}
+
                                               <button
                                                 className="btn btn-ghost"
                                                 disabled={
@@ -989,6 +999,8 @@ function ScheduleSessions() {
                                               >
                                                 Reschedule
                                               </button>
+
+                                              {/* Reschedule Form */}
 
                                               {isRescheduling && (
                                                 <div
