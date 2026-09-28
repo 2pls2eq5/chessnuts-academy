@@ -16,6 +16,7 @@ function Schedules() {
   const [loading, setLoading] = useState(true)
   const [schedules, setSchedules] = useState([])
   const [packages, setPackages] = useState([])
+  const [sessions, setSessions] = useState([])
   const [requestCount, setRequestCount] = useState(0)
   const [availabilityCount, setAvailabilityCount] = useState(0)
   const [actionLoading, setActionLoading] = useState(null)
@@ -42,6 +43,10 @@ function Schedules() {
       {
         data: packagesData,
         error: packagesError,
+      },
+      {
+        data: sessionsData,
+        error: sessionsError,
       },
       {
         count: requestCountData,
@@ -96,7 +101,16 @@ function Schedules() {
           student_id,
           program_id,
           status,
-          payment_status
+          payment_status,
+          purchased_at
+        `),
+
+      supabase
+        .from('class_sessions')
+        .select(`
+          id,
+          package_id,
+          status
         `),
 
       supabase
@@ -128,6 +142,12 @@ function Schedules() {
       return
     }
 
+    if (sessionsError) {
+      setError(sessionsError.message)
+      setLoading(false)
+      return
+    }
+
     if (requestError) {
       setError(requestError.message)
       setLoading(false)
@@ -142,6 +162,7 @@ function Schedules() {
 
     setSchedules(schedulesData || [])
     setPackages(packagesData || [])
+    setSessions(sessionsData || [])
     setRequestCount(requestCountData || 0)
     setAvailabilityCount(
       availabilityCountData || 0
@@ -228,6 +249,31 @@ function Schedules() {
     )
   }
 
+  function getCompletedSessionCount(scheduleItem) {
+    const currentPackage = packages
+      .filter(
+        (packageItem) =>
+          packageItem.schedule_id ===
+            scheduleItem.id &&
+          packageItem.status === 'ongoing'
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.purchased_at) -
+          new Date(a.purchased_at)
+      )[0]
+
+    if (!currentPackage) {
+      return 0
+    }
+
+    return sessions.filter(
+      (session) =>
+        session.package_id === currentPackage.id &&
+        session.status === 'completed'
+    ).length
+  }
+
   async function handleGenerateSessions(scheduleItem) {
     setActionLoading(scheduleItem.id)
     setError('')
@@ -247,6 +293,34 @@ function Schedules() {
       )
 
       setError(generateError.message)
+      setActionLoading(null)
+      return
+    }
+
+    await loadSchedulesOverview()
+
+    setActionLoading(null)
+  }
+
+  async function handleRenew(scheduleItem) {
+    setActionLoading(scheduleItem.id)
+    setError('')
+
+    const { error: renewError } =
+      await supabase.rpc(
+        'admin_renew_package',
+        {
+          p_schedule_id: scheduleItem.id,
+        }
+      )
+
+    if (renewError) {
+      console.error(
+        'Renew package error:',
+        renewError
+      )
+
+      setError(renewError.message)
       setActionLoading(null)
       return
     }
@@ -493,19 +567,29 @@ function Schedules() {
       )
     }
 
+    const completedSessions =
+      getCompletedSessionCount(scheduleItem)
+
     return (
       <div className="form-actions schedule-actions">
         <button
-          className="btn btn-primary"
+          className="btn btn-secondary"
           onClick={() =>
-            handleAction(
-              'renew',
-              scheduleItem
-            )
+            handleRenew(scheduleItem)
           }
-          disabled={isLoading}
+          disabled={
+            isLoading ||
+            completedSessions < 4
+          }
+          title={
+            completedSessions < 4
+              ? 'Available after 4 sessions are completed'
+              : 'Renew package'
+          }
         >
-          Renew
+          {isLoading
+            ? 'Renewing...'
+            : 'Renew'}
         </button>
 
         <button
