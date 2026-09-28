@@ -303,9 +303,9 @@ function App() {
       />
     )
   }
-  if (path === '/schedules/schedulerequests') {
+  if (path === '/schedules/requests') {
   return (
-    <Requests 
+    <ScheduleRequests 
       user={user}
       profile={profile}
       />
