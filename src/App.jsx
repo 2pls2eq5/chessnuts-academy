@@ -17,6 +17,7 @@ import AddParent from './pages/AddParent'
 
 import Schedule from './pages/Schedules'
 import Availability from './pages/Availability'
+import Requests from './pages/Requests'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -302,6 +303,14 @@ function App() {
       />
     )
   }
+  if (path === '/schedules/requests') {
+  return (
+    <Requests 
+      user={user}
+      profile={profile}
+      />
+    )
+}
 
   /* =========================
      DASHBOARD
