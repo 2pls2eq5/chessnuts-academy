@@ -46,6 +46,7 @@ function ScheduleRequests() {
   const [formError, setFormError] = useState('')
   const [actionError, setActionError] = useState('')
   const [approvingId, setApprovingId] = useState(null)
+  const [rejectingId, setRejectingId] = useState(null)
 
   async function loadScheduleRequests() {
     setLoading(true)
@@ -384,6 +385,27 @@ function ScheduleRequests() {
 
     await loadScheduleRequests()
     setApprovingId(null)
+  }
+
+  async function rejectScheduleRequest(requestId) {
+    setRejectingId(requestId)
+    setActionError('')
+
+    const { error } = await supabase.rpc(
+      'reject_schedule_request',
+      {
+        p_request_id: requestId,
+      }
+    )
+
+    if (error) {
+      setActionError(error.message)
+      setRejectingId(null)
+      return
+    }
+
+    await loadScheduleRequests()
+    setRejectingId(null)
   }
 
   const filteredScheduleRequests =
@@ -778,6 +800,10 @@ function ScheduleRequests() {
                         approvingId ===
                         request.id
 
+                      const isRejecting =
+                        rejectingId ===
+                        request.id
+
                       return (
                         <tr key={request.id}>
                           <td>
@@ -838,21 +864,41 @@ function ScheduleRequests() {
 
                           <td>
                             {status === 'pending' ? (
-                              <button
-                                className="btn btn-primary"
-                                disabled={
-                                  isApproving
-                                }
-                                onClick={() =>
-                                  approveScheduleRequest(
-                                    request.id
-                                  )
-                                }
-                              >
-                                {isApproving
-                                  ? 'Approving...'
-                                  : 'Approve'}
-                              </button>
+                              <div className="form-actions">
+                                <button
+                                  className="btn btn-primary"
+                                  disabled={
+                                    isApproving ||
+                                    isRejecting
+                                  }
+                                  onClick={() =>
+                                    approveScheduleRequest(
+                                      request.id
+                                    )
+                                  }
+                                >
+                                  {isApproving
+                                    ? 'Approving...'
+                                    : 'Approve'}
+                                </button>
+
+                                <button
+                                  className="btn btn-secondary"
+                                  disabled={
+                                    isApproving ||
+                                    isRejecting
+                                  }
+                                  onClick={() =>
+                                    rejectScheduleRequest(
+                                      request.id
+                                    )
+                                  }
+                                >
+                                  {isRejecting
+                                    ? 'Rejecting...'
+                                    : 'Reject'}
+                                </button>
+                              </div>
                             ) : (
                               '—'
                             )}
