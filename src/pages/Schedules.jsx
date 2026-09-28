@@ -300,7 +300,7 @@ function Schedules() {
             </div>
           </div>
 
-          {/* Student Requests */}
+          {/* Schedule Requests */}
           <div
             className="card"
             style={{
@@ -309,7 +309,7 @@ function Schedules() {
             }}
           >
             <div className="form-header">
-              <h2>Student Requests</h2>
+              <h2>Schedule Requests</h2>
 
               <p>
                 Review schedule requests submitted by
