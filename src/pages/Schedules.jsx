@@ -24,6 +24,9 @@ function Schedules() {
   const [suspendModalOpen, setSuspendModalOpen] =
     useState(false)
 
+  const [cancelModalOpen, setCancelModalOpen] =
+    useState(false)
+
   const [selectedSchedule, setSelectedSchedule] =
     useState(null)
 
@@ -302,6 +305,55 @@ function Schedules() {
     setActionLoading(null)
   }
 
+  function openCancelModal(scheduleItem) {
+    setSelectedSchedule(scheduleItem)
+    setCancelModalOpen(true)
+  }
+
+  function closeCancelModal() {
+    if (actionLoading) {
+      return
+    }
+
+    setCancelModalOpen(false)
+    setSelectedSchedule(null)
+  }
+
+  async function handleCancel() {
+    if (!selectedSchedule) {
+      return
+    }
+
+    setActionLoading(selectedSchedule.id)
+    setError('')
+
+    const { error: cancelError } =
+      await supabase.rpc(
+        'admin_cancel_schedule',
+        {
+          p_schedule_id: selectedSchedule.id,
+        }
+      )
+
+    if (cancelError) {
+      console.error(
+        'Cancel schedule error:',
+        cancelError
+      )
+
+      setError(cancelError.message)
+      setActionLoading(null)
+      return
+    }
+
+    setCancelModalOpen(false)
+    setSelectedSchedule(null)
+
+    await loadSchedulesOverview()
+
+    setActionLoading(null)
+  }
+
   async function handleAction(action, scheduleItem) {
     if (action === 'resume') {
       setActionLoading(scheduleItem.id)
@@ -350,6 +402,24 @@ function Schedules() {
     const isLoading =
       actionLoading === scheduleItem.id
 
+    if (scheduleItem.status === 'cancelled') {
+      return (
+        <div className="form-actions schedule-actions">
+          {generated && (
+            <button
+              className="btn btn-secondary"
+              onClick={() =>
+                viewSessions(scheduleItem)
+              }
+              disabled={isLoading}
+            >
+              View Sessions
+            </button>
+          )}
+        </div>
+      )
+    }
+
     if (scheduleItem.status === 'suspended') {
       return (
         <div className="form-actions schedule-actions">
@@ -371,10 +441,7 @@ function Schedules() {
           <button
             className="btn btn-secondary"
             onClick={() =>
-              handleAction(
-                'cancel',
-                scheduleItem
-              )
+              openCancelModal(scheduleItem)
             }
             disabled={isLoading}
           >
@@ -416,10 +483,7 @@ function Schedules() {
           <button
             className="btn btn-secondary"
             onClick={() =>
-              handleAction(
-                'cancel',
-                scheduleItem
-              )
+              openCancelModal(scheduleItem)
             }
             disabled={isLoading}
           >
@@ -457,10 +521,7 @@ function Schedules() {
         <button
           className="btn btn-secondary"
           onClick={() =>
-            handleAction(
-              'cancel',
-              scheduleItem
-            )
+            openCancelModal(scheduleItem)
           }
           disabled={isLoading}
         >
@@ -693,12 +754,18 @@ function Schedules() {
                             scheduleItem.status ===
                             'suspended'
                               ? 'status-inactive'
+                              : scheduleItem.status ===
+                                'cancelled'
+                              ? 'status-inactive'
                               : 'status-active'
                           }`}
                         >
                           {scheduleItem.status ===
                           'suspended'
                             ? 'Suspended'
+                            : scheduleItem.status ===
+                              'cancelled'
+                            ? 'Cancelled'
                             : 'Active'}
                         </span>
                       </td>
@@ -823,6 +890,118 @@ function Schedules() {
                   selectedSchedule.id
                     ? 'Suspending...'
                     : 'Suspend Schedule'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancelModalOpen &&
+        selectedSchedule && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '20px',
+            }}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                padding: '28px',
+              }}
+            >
+              <div className="form-header">
+                <h2>Cancel Schedule?</h2>
+
+                <p>
+                  This will cancel the recurring
+                  schedule, finish the package, and
+                  cancel all future sessions.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background:
+                    'var(--background-secondary)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '24px',
+                }}
+              >
+                <strong>
+                  {getStudentName(
+                    selectedSchedule
+                  )}
+                </strong>
+
+                <div
+                  style={{
+                    marginTop: '6px',
+                  }}
+                >
+                  {getDayLabel(
+                    selectedSchedule.day_of_week
+                  )}{' '}
+                  ·{' '}
+                  {formatTime(
+                    selectedSchedule.start_time
+                  )}
+                  {'–'}
+                  {formatTime(
+                    selectedSchedule.end_time
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: '6px',
+                  }}
+                >
+                  {getCoachName(
+                    selectedSchedule
+                  )}
+                </div>
+              </div>
+
+              <div
+                className="form-actions"
+                style={{
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <button
+                  className="btn btn-secondary"
+                  onClick={closeCancelModal}
+                  disabled={
+                    actionLoading ===
+                    selectedSchedule.id
+                  }
+                >
+                  Keep Schedule
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCancel}
+                  disabled={
+                    actionLoading ===
+                    selectedSchedule.id
+                  }
+                >
+                  {actionLoading ===
+                  selectedSchedule.id
+                    ? 'Cancelling...'
+                    : 'Cancel Schedule'}
                 </button>
               </div>
             </div>
