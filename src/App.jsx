@@ -284,7 +284,7 @@ function App() {
   }
 
   /* =========================
-     SCHEDULE
+     SCHEDULES
   ========================= */
 
   if (path === '/schedules') {
@@ -304,20 +304,27 @@ function App() {
       />
     )
   }
+
   if (path === '/schedules/requests') {
-  return (
-    <ScheduleRequests 
-      user={user}
-      profile={profile}
+    return (
+      <ScheduleRequests
+        user={user}
+        profile={profile}
       />
     )
-}
+  }
+
   if (
-  pathname.startsWith('/schedules/') &&
-  pathname.endsWith('/sessions')
-) {
-  return <ScheduleSessions />
-}
+    path.startsWith('/schedules/') &&
+    path.endsWith('/sessions')
+  ) {
+    return (
+      <ScheduleSessions
+        user={user}
+        profile={profile}
+      />
+    )
+  }
 
   /* =========================
      DASHBOARD
