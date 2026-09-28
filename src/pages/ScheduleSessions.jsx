@@ -27,6 +27,10 @@ function ScheduleSessions() {
       setLoading(true)
       setError('')
 
+      /* =========================
+         SCHEDULE
+      ========================= */
+
       const {
         data: scheduleData,
         error: scheduleError,
@@ -68,6 +72,10 @@ function ScheduleSessions() {
         return
       }
 
+      /* =========================
+         PACKAGES
+      ========================= */
+
       const {
         data: packagesData,
         error: packagesError,
@@ -93,6 +101,10 @@ function ScheduleSessions() {
         setLoading(false)
         return
       }
+
+      /* =========================
+         SESSIONS
+      ========================= */
 
       const packageIds =
         (packagesData || []).map(
@@ -141,6 +153,10 @@ function ScheduleSessions() {
 
     loadScheduleSessions()
   }, [scheduleId])
+
+  /* =========================
+     HELPERS
+  ========================= */
 
   function getStudentName() {
     return (
@@ -256,8 +272,12 @@ function ScheduleSessions() {
       return 'status-inactive'
     }
 
-    return 'status-badge'
+    return ''
   }
+
+  /* =========================
+     LOADING
+  ========================= */
 
   if (loading) {
     return (
@@ -270,6 +290,10 @@ function ScheduleSessions() {
       </div>
     )
   }
+
+  /* =========================
+     ERROR
+  ========================= */
 
   if (error) {
     return (
@@ -285,6 +309,10 @@ function ScheduleSessions() {
     )
   }
 
+  /* =========================
+     NOT FOUND
+  ========================= */
+
   if (!schedule) {
     return (
       <div className="academy-app">
@@ -298,6 +326,10 @@ function ScheduleSessions() {
       </div>
     )
   }
+
+  /* =========================
+     PAGE
+  ========================= */
 
   return (
     <div className="academy-app">
@@ -327,56 +359,54 @@ function ScheduleSessions() {
           </div>
         </div>
 
-        {/* Schedule Summary */}
+        {/* =========================
+            SCHEDULE SUMMARY
+        ========================= */}
+
         <div className="card detail-card">
-          <div className="form-header">
-            <h2>Schedule</h2>
+          <div className="detail-card-header">
+            <h2 className="detail-card-title">
+              Schedule
+            </h2>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'repeat(2, minmax(0, 1fr))',
-              gap: '20px',
-            }}
-          >
+          <div className="detail-grid">
             <div>
-              <div className="form-label">
+              <div className="detail-label">
                 Student
               </div>
 
-              <div>
+              <div className="detail-value detail-value-strong">
                 {getStudentName()}
               </div>
             </div>
 
             <div>
-              <div className="form-label">
+              <div className="detail-label">
                 Coach
               </div>
 
-              <div>
+              <div className="detail-value detail-value-strong">
                 {getCoachName()}
               </div>
             </div>
 
             <div>
-              <div className="form-label">
+              <div className="detail-label">
                 Program
               </div>
 
-              <div>
+              <div className="detail-value">
                 {getProgramLabel()}
               </div>
             </div>
 
             <div>
-              <div className="form-label">
+              <div className="detail-label">
                 Recurring Time
               </div>
 
-              <div>
+              <div className="detail-value">
                 {getDayLabel(
                   schedule.day_of_week
                 )}
@@ -392,21 +422,21 @@ function ScheduleSessions() {
             </div>
 
             <div>
-              <div className="form-label">
+              <div className="detail-label">
                 Timezone
               </div>
 
-              <div>
+              <div className="detail-value">
                 {schedule.timezone}
               </div>
             </div>
 
             <div>
-              <div className="form-label">
+              <div className="detail-label">
                 Schedule Status
               </div>
 
-              <div>
+              <div className="detail-value">
                 <span
                   className={`status-badge ${
                     schedule.status ===
@@ -425,7 +455,10 @@ function ScheduleSessions() {
           </div>
         </div>
 
-        {/* Packages */}
+        {/* =========================
+            PACKAGES
+        ========================= */}
+
         {packages.length === 0 ? (
           <div
             className="card"
@@ -452,13 +485,12 @@ function ScheduleSessions() {
 
               return (
                 <div
-                  className="card"
+                  className="card schedule-package"
                   key={packageItem.id}
-                  style={{
-                    marginBottom: '24px',
-                  }}
                 >
-                  <div className="form-header">
+                  {/* Package Header */}
+
+                  <div className="schedule-package-header">
                     <h2>
                       Package {index + 1}
                     </h2>
@@ -474,122 +506,151 @@ function ScheduleSessions() {
                     </p>
                   </div>
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '24px',
-                      flexWrap: 'wrap',
-                      marginBottom: '20px',
-                    }}
-                  >
-                    <div>
-                      <div className="form-label">
-                        Package Status
+                  {/* Package Body */}
+
+                  <div className="schedule-package-body">
+                    {/* Package Metadata */}
+
+                    <div className="schedule-package-meta">
+                      <div className="schedule-package-meta-item">
+                        <div className="detail-label">
+                          Package Status
+                        </div>
+
+                        <div>
+                          <span
+                            className={`status-badge ${
+                              packageItem.status ===
+                              'suspended'
+                                ? 'status-inactive'
+                                : packageItem.status ===
+                                    'finished'
+                                  ? 'status-inactive'
+                                  : 'status-active'
+                            }`}
+                          >
+                            {packageItem.status}
+                          </span>
+                        </div>
                       </div>
 
-                      <span className="status-badge status-active">
-                        {packageItem.status}
-                      </span>
+                      <div className="schedule-package-meta-item">
+                        <div className="detail-label">
+                          Payment
+                        </div>
+
+                        <div>
+                          <span
+                            className={`status-badge ${
+                              packageItem.payment_status ===
+                              'paid'
+                                ? 'status-active'
+                                : packageItem.payment_status ===
+                                    'cancelled'
+                                  ? 'status-inactive'
+                                  : ''
+                            }`}
+                          >
+                            {
+                              packageItem.payment_status
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="schedule-package-meta-item">
+                        <div className="detail-label">
+                          Sessions
+                        </div>
+
+                        <div className="detail-value">
+                          {
+                            packageSessions.length
+                          }{' '}
+                          / 4
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <div className="form-label">
-                        Payment
-                      </div>
+                    {/* Sessions */}
 
-                      <span className="status-badge">
-                        {packageItem.payment_status}
-                      </span>
-                    </div>
+                    <div className="schedule-package-sessions">
+                      {packageSessions.length ===
+                      0 ? (
+                        <div className="empty-state">
+                          No sessions found for
+                          this package.
+                        </div>
+                      ) : (
+                        <div className="table-scroll">
+                          <table className="students-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Notes</th>
+                              </tr>
+                            </thead>
 
-                    <div>
-                      <div className="form-label">
-                        Sessions
-                      </div>
+                            <tbody>
+                              {packageSessions.map(
+                                (
+                                  session,
+                                  sessionIndex
+                                ) => (
+                                  <tr
+                                    key={
+                                      session.id
+                                    }
+                                  >
+                                    <td>
+                                      {sessionIndex +
+                                        1}
+                                    </td>
 
-                      <div>
-                        {
-                          packageSessions.length
-                        }{' '}
-                        / 4
-                      </div>
+                                    <td>
+                                      {formatDate(
+                                        session.session_date
+                                      )}
+                                    </td>
+
+                                    <td>
+                                      {formatTime(
+                                        session.start_time
+                                      )}
+                                      {'–'}
+                                      {formatTime(
+                                        session.end_time
+                                      )}
+                                    </td>
+
+                                    <td>
+                                      <span
+                                        className={`status-badge ${getStatusClass(
+                                          session.status
+                                        )}`}
+                                      >
+                                        {
+                                          session.status
+                                        }
+                                      </span>
+                                    </td>
+
+                                    <td>
+                                      {session.notes ||
+                                        '—'}
+                                    </td>
+                                  </tr>
+                                )
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {packageSessions.length ===
-                  0 ? (
-                    <div className="empty-state">
-                      No sessions found for
-                      this package.
-                    </div>
-                  ) : (
-                    <div className="table-scroll">
-                      <table className="students-table">
-                        <thead>
-                          <tr>
-                            <th>#</th>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Status</th>
-                            <th>Notes</th>
-                          </tr>
-                        </thead>
-
-                        <tbody>
-                          {packageSessions.map(
-                            (
-                              session,
-                              sessionIndex
-                            ) => (
-                              <tr
-                                key={
-                                  session.id
-                                }
-                              >
-                                <td>
-                                  {sessionIndex +
-                                    1}
-                                </td>
-
-                                <td>
-                                  {formatDate(
-                                    session.session_date
-                                  )}
-                                </td>
-
-                                <td>
-                                  {formatTime(
-                                    session.start_time
-                                  )}
-                                  {'–'}
-                                  {formatTime(
-                                    session.end_time
-                                  )}
-                                </td>
-
-                                <td>
-                                  <span
-                                    className={`status-badge ${getStatusClass(
-                                      session.status
-                                    )}`}
-                                  >
-                                    {
-                                      session.status
-                                    }
-                                  </span>
-                                </td>
-
-                                <td>
-                                  {session.notes ||
-                                    '—'}
-                                </td>
-                              </tr>
-                            )
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
                 </div>
               )
             })}
