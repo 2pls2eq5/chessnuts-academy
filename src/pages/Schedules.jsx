@@ -481,7 +481,7 @@ function Schedules() {
         <div className="form-actions schedule-actions">
           {generated && (
             <button
-              className="btn btn-success"
+              className="btn btn-secondary"
               onClick={() =>
                 viewSessions(scheduleItem)
               }
@@ -498,7 +498,7 @@ function Schedules() {
       return (
         <div className="form-actions schedule-actions">
           <button
-            className="btn btn-success"
+            className="btn btn-secondary"
             onClick={() =>
               handleAction(
                 'resume',
@@ -513,7 +513,7 @@ function Schedules() {
           </button>
 
           <button
-            className="btn btn-danger"
+            className="btn btn-secondary"
             onClick={() =>
               openCancelModal(scheduleItem)
             }
@@ -524,7 +524,7 @@ function Schedules() {
 
           {generated && (
             <button
-              className="btn btn-success"
+              className="btn btn-primary"
               onClick={() =>
                 viewSessions(scheduleItem)
               }
@@ -555,7 +555,7 @@ function Schedules() {
           </button>
 
           <button
-            className="btn btn-danger"
+            className="btn btn-secondary"
             onClick={() =>
               openCancelModal(scheduleItem)
             }
@@ -593,7 +593,7 @@ function Schedules() {
         </button>
 
         <button
-          className="btn btn-warning"
+          className="btn btn-secondary"
           onClick={() =>
             openSuspendModal(scheduleItem)
           }
@@ -603,7 +603,7 @@ function Schedules() {
         </button>
 
         <button
-          className="btn btn-danger"
+          className="btn btn-secondary"
           onClick={() =>
             openCancelModal(scheduleItem)
           }
@@ -613,7 +613,7 @@ function Schedules() {
         </button>
 
         <button
-          className="btn btn-success"
+          className="btn btn-secondary"
           onClick={() =>
             viewSessions(scheduleItem)
           }
@@ -963,7 +963,7 @@ function Schedules() {
                 </button>
 
                 <button
-                  className="btn btn-warning"
+                  className="btn btn-primary"
                   onClick={handleSuspend}
                   disabled={
                     actionLoading ===
@@ -1075,7 +1075,7 @@ function Schedules() {
                 </button>
 
                 <button
-                  className="btn btn-danger"
+                  className="btn btn-primary"
                   onClick={handleCancel}
                   disabled={
                     actionLoading ===
