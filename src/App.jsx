@@ -18,6 +18,7 @@ import AddParent from './pages/AddParent'
 import Schedule from './pages/Schedules'
 import CoachAvailability from './pages/CoachAvailability'
 import ScheduleRequests from './pages/ScheduleRequests'
+import ScheduleSessions from './pages/ScheduleSessions'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -310,6 +311,12 @@ function App() {
       profile={profile}
       />
     )
+}
+  if (
+  pathname.startsWith('/schedules/') &&
+  pathname.endsWith('/sessions')
+) {
+  return <ScheduleSessions />
 }
 
   /* =========================
