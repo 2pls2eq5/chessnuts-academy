@@ -427,6 +427,24 @@
 }
 
 /* =========================================================
+   SCHEDULE ACTIONS
+========================================================= */
+
+.schedule-actions {
+  margin-top: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.schedule-actions .btn {
+  min-width: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* =========================================================
    STUDENT DETAIL
 ========================================================= */
 
