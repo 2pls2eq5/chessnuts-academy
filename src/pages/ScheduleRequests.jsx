@@ -21,7 +21,8 @@ const TIMEZONES = [
 
 function ScheduleRequests() {
   const [loading, setLoading] = useState(true)
-  const [requests, setRequests] = useState([])
+  const [scheduleRequests, setScheduleRequests] =
+    useState([])
 
   const [students, setStudents] = useState([])
   const [coaches, setCoaches] = useState([])
@@ -46,7 +47,7 @@ function ScheduleRequests() {
   const [actionError, setActionError] = useState('')
   const [approvingId, setApprovingId] = useState(null)
 
-  async function loadRequests() {
+  async function loadScheduleRequests() {
     setLoading(true)
     setError('')
 
@@ -92,7 +93,7 @@ function ScheduleRequests() {
       return
     }
 
-    setRequests(data || [])
+    setScheduleRequests(data || [])
     setLoading(false)
   }
 
@@ -173,7 +174,7 @@ function ScheduleRequests() {
 
   useEffect(() => {
     async function loadPage() {
-      await loadRequests()
+      await loadScheduleRequests()
       await loadFormData()
     }
 
@@ -273,14 +274,9 @@ function ScheduleRequests() {
   }
 
   function handleProgramChange(programId) {
-    const program = programs.find(
-      (item) => item.id === programId
-    )
-
     setForm((current) => ({
       ...current,
       program_id: programId,
-      start_time: current.start_time,
     }))
   }
 
@@ -291,7 +287,7 @@ function ScheduleRequests() {
     }))
   }
 
-  async function createRequest(e) {
+  async function createScheduleRequest(e) {
     e.preventDefault()
 
     setFormError('')
@@ -366,10 +362,10 @@ function ScheduleRequests() {
 
     setFormLoading(false)
     closeForm()
-    await loadRequests()
+    await loadScheduleRequests()
   }
 
-  async function approveRequest(requestId) {
+  async function approveScheduleRequest(requestId) {
     setApprovingId(requestId)
     setActionError('')
 
@@ -386,12 +382,12 @@ function ScheduleRequests() {
       return
     }
 
-    await loadRequests()
+    await loadScheduleRequests()
     setApprovingId(null)
   }
 
-  const filteredRequests = requests.filter(
-    (request) => {
+  const filteredScheduleRequests =
+    scheduleRequests.filter((request) => {
       const searchText = search.toLowerCase()
 
       const studentName = (
@@ -413,8 +409,7 @@ function ScheduleRequests() {
         coachName.includes(searchText) ||
         status.includes(searchText)
       )
-    }
-  )
+    })
 
   const selectedProgram = programs.find(
     (program) => program.id === form.program_id
@@ -431,7 +426,7 @@ function ScheduleRequests() {
         <AcademyHeader />
 
         <div className="page-state">
-          Loading requests...
+          Loading schedule requests...
         </div>
       </div>
     )
@@ -464,7 +459,7 @@ function ScheduleRequests() {
 
           <form
             className="card form-card"
-            onSubmit={createRequest}
+            onSubmit={createScheduleRequest}
           >
             {formError && (
               <div className="error-box">
@@ -716,7 +711,7 @@ function ScheduleRequests() {
       <main className="academy-main">
         <div className="page-header">
           <div className="page-header-copy">
-            <h1>Requests</h1>
+            <h1>Schedule Requests</h1>
 
             <p>
               Review student schedule requests
@@ -741,7 +736,7 @@ function ScheduleRequests() {
           <input
             className="search-input"
             type="text"
-            placeholder="Search requests..."
+            placeholder="Search schedule requests..."
             value={search}
             onChange={(e) =>
               setSearch(e.target.value)
@@ -750,10 +745,10 @@ function ScheduleRequests() {
         </div>
 
         <div className="card table-card">
-          {filteredRequests.length === 0 ? (
+          {filteredScheduleRequests.length === 0 ? (
             <div className="empty-state">
               {search
-                ? 'No requests match your search.'
+                ? 'No schedule requests match your search.'
                 : 'No schedule requests found.'}
             </div>
           ) : (
@@ -773,7 +768,7 @@ function ScheduleRequests() {
                 </thead>
 
                 <tbody>
-                  {filteredRequests.map(
+                  {filteredScheduleRequests.map(
                     (request) => {
                       const status =
                         request.status ||
@@ -849,7 +844,7 @@ function ScheduleRequests() {
                                   isApproving
                                 }
                                 onClick={() =>
-                                  approveRequest(
+                                  approveScheduleRequest(
                                     request.id
                                   )
                                 }
