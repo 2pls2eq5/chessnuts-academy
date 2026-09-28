@@ -768,11 +768,8 @@ function Schedules() {
               textAlign: 'center',
             }}
           >
-            <h2>Schedules</h2>
+            <h2>Approved Schedules</h2>
 
-            <p>
-              Approved recurring student schedules
-            </p>
           </div>
 
           {schedules.length === 0 ? (
