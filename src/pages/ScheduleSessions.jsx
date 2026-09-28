@@ -12,34 +12,45 @@ const DAYS = [
   'Saturday',
 ]
 
-function Schedules() {
+function ScheduleSessions() {
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] =
-    useState(null)
+  const [actionLoading, setActionLoading] = useState(null)
 
-  const [schedules, setSchedules] = useState([])
+  const [schedule, setSchedule] = useState(null)
   const [packages, setPackages] = useState([])
   const [sessions, setSessions] = useState([])
 
   const [error, setError] = useState('')
 
-  const [suspendSchedule, setSuspendSchedule] =
+  const [rescheduleSession, setRescheduleSession] =
     useState(null)
 
-  const [cancelSchedule, setCancelSchedule] =
-    useState(null)
+  const [availability, setAvailability] =
+    useState([])
 
-  async function loadSchedulesOverview() {
+  const [availabilityLoading, setAvailabilityLoading] =
+    useState(false)
+
+  const [rescheduleDate, setRescheduleDate] =
+    useState('')
+
+  const [rescheduleTime, setRescheduleTime] =
+    useState('')
+
+  const scheduleId =
+    window.location.pathname.split('/')[2]
+
+  async function loadScheduleSessions() {
     setLoading(true)
     setError('')
 
     /* =========================
-       SCHEDULES
+       SCHEDULE
     ========================= */
 
     const {
-      data: schedulesData,
-      error: schedulesError,
+      data: scheduleData,
+      error: scheduleError,
     } = await supabase
       .from('student_schedules')
       .select(`
@@ -69,12 +80,11 @@ function Schedules() {
           duration
         )
       `)
-      .order('id', {
-        ascending: true,
-      })
+      .eq('id', scheduleId)
+      .single()
 
-    if (schedulesError) {
-      setError(schedulesError.message)
+    if (scheduleError) {
+      setError(scheduleError.message)
       setLoading(false)
       return
     }
@@ -98,6 +108,7 @@ function Schedules() {
         status,
         created_at
       `)
+      .eq('schedule_id', scheduleId)
       .order('created_at', {
         ascending: true,
       })
@@ -112,50 +123,232 @@ function Schedules() {
        SESSIONS
     ========================= */
 
-    const {
-      data: sessionsData,
-      error: sessionsError,
-    } = await supabase
-      .from('class_sessions')
-      .select(`
-        id,
-        package_id,
-        status,
-        session_date
-      `)
+    const packageIds =
+      (packagesData || []).map(
+        (packageItem) => packageItem.id
+      )
 
-    if (sessionsError) {
-      setError(sessionsError.message)
-      setLoading(false)
-      return
+    let sessionsData = []
+
+    if (packageIds.length > 0) {
+      const {
+        data,
+        error: sessionsError,
+      } = await supabase
+        .from('class_sessions')
+        .select(`
+          id,
+          package_id,
+          session_date,
+          start_time,
+          end_time,
+          status,
+          notes
+        `)
+        .in('package_id', packageIds)
+        .order('session_date', {
+          ascending: true,
+        })
+        .order('start_time', {
+          ascending: true,
+        })
+
+      if (sessionsError) {
+        setError(sessionsError.message)
+        setLoading(false)
+        return
+      }
+
+      sessionsData = data || []
     }
 
-    setSchedules(schedulesData || [])
+    setSchedule(scheduleData)
     setPackages(packagesData || [])
-    setSessions(sessionsData || [])
+    setSessions(sessionsData)
     setLoading(false)
   }
 
   useEffect(() => {
-    loadSchedulesOverview()
-  }, [])
+    loadScheduleSessions()
+  }, [scheduleId])
+
+  /* =========================
+     SESSION ACTIONS
+  ========================= */
+
+  async function handleCompleteSession(session) {
+    setActionLoading(session.id)
+    setError('')
+
+    const {
+      error: completeError,
+    } = await supabase.rpc(
+      'admin_complete_session',
+      {
+        p_session_id: session.id,
+      }
+    )
+
+    if (completeError) {
+      setError(completeError.message)
+      setActionLoading(null)
+      return
+    }
+
+    await loadScheduleSessions()
+    setActionLoading(null)
+  }
+
+  async function handleForfeitSession(session) {
+    const confirmed = window.confirm(
+      'Forfeit this session?\n\nThis session will be marked as used and will not be rescheduled.'
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setActionLoading(session.id)
+    setError('')
+
+    const {
+      error: forfeitError,
+    } = await supabase.rpc(
+      'admin_forfeit_session',
+      {
+        p_session_id: session.id,
+      }
+    )
+
+    if (forfeitError) {
+      setError(forfeitError.message)
+      setActionLoading(null)
+      return
+    }
+
+    await loadScheduleSessions()
+    setActionLoading(null)
+  }
+
+  /* =========================
+     RESCHEDULE
+  ========================= */
+
+  async function handleOpenReschedule(session) {
+    setError('')
+    setRescheduleSession(session)
+    setAvailability([])
+    setRescheduleDate('')
+    setRescheduleTime('')
+    setAvailabilityLoading(true)
+
+    const {
+      data,
+      error: availabilityError,
+    } = await supabase.rpc(
+      'get_actual_availability',
+      {
+        p_coach_id: schedule.coach_id,
+        p_program_id: schedule.program_id,
+        p_start_date: session.session_date,
+      }
+    )
+
+    if (availabilityError) {
+      setError(availabilityError.message)
+      setAvailabilityLoading(false)
+      return
+    }
+
+    setAvailability(data || [])
+    setAvailabilityLoading(false)
+  }
+
+  function handleCancelReschedule() {
+    if (actionLoading) {
+      return
+    }
+
+    setRescheduleSession(null)
+    setAvailability([])
+    setRescheduleDate('')
+    setRescheduleTime('')
+    setError('')
+  }
+
+  async function handleReschedule() {
+    if (!rescheduleSession) {
+      return
+    }
+
+    if (!rescheduleDate || !rescheduleTime) {
+      setError(
+        'Please select a new date and time.'
+      )
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Reschedule this session to ${formatDate(
+        rescheduleDate
+      )} at ${formatTime(rescheduleTime)}?`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setActionLoading(
+      rescheduleSession.id
+    )
+    setError('')
+
+    const {
+      error: rescheduleError,
+    } = await supabase.rpc(
+      'admin_reschedule_session',
+      {
+        p_session_id:
+          rescheduleSession.id,
+        p_new_date:
+          rescheduleDate,
+        p_new_start_time:
+          rescheduleTime,
+      }
+    )
+
+    if (rescheduleError) {
+      setError(
+        rescheduleError.message
+      )
+      setActionLoading(null)
+      return
+    }
+
+    setRescheduleSession(null)
+    setAvailability([])
+    setRescheduleDate('')
+    setRescheduleTime('')
+
+    await loadScheduleSessions()
+
+    setActionLoading(null)
+  }
 
   /* =========================
      HELPERS
   ========================= */
 
-  function getStudentName(schedule) {
+  function getStudentName() {
     return (
-      schedule?.students?.profiles
-        ?.display_name ||
+      schedule?.students?.profiles?.display_name ||
       'Unnamed Student'
     )
   }
 
-  function getCoachName(schedule) {
+  function getCoachName() {
     return (
-      schedule?.coaches?.profiles
-        ?.display_name ||
+      schedule?.coaches?.profiles?.display_name ||
       'Unnamed Coach'
     )
   }
@@ -171,7 +364,89 @@ function Schedules() {
     return time?.slice(0, 5) || '—'
   }
 
-  function getProgramLabel(schedule) {
+  function formatDate(date) {
+    if (!date) {
+      return '—'
+    }
+
+    const value = new Date(
+      `${date}T00:00:00`
+    )
+
+    return value.toLocaleDateString(
+      'en-US',
+      {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }
+    )
+  }
+
+  /*
+    Get the current date/time represented
+    in the schedule timezone.
+
+    This is only used by the frontend
+    to control the Complete button.
+  */
+  function getNowInScheduleTimezone() {
+    const timezone =
+      schedule?.timezone || 'Asia/Jakarta'
+
+    const formatter =
+      new Intl.DateTimeFormat(
+        'en-CA',
+        {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hourCycle: 'h23',
+        }
+      )
+
+    const parts =
+      formatter.formatToParts(
+        new Date()
+      )
+
+    const values = {}
+
+    for (const part of parts) {
+      if (part.type !== 'literal') {
+        values[part.type] = part.value
+      }
+    }
+
+    return (
+      `${values.year}-${values.month}-${values.day}` +
+      `T${values.hour}:${values.minute}:${values.second}`
+    )
+  }
+
+  function isSessionFinished(session) {
+    if (
+      !session?.session_date ||
+      !session?.end_time
+    ) {
+      return false
+    }
+
+    const now =
+      getNowInScheduleTimezone()
+
+    const sessionEnd =
+      `${session.session_date}T${session.end_time.slice(0, 8)}`
+
+    return now >= sessionEnd
+  }
+
+  function getProgramLabel() {
     const program = schedule?.programs
 
     if (!program) {
@@ -221,64 +496,33 @@ function Schedules() {
     return parts.join(' · ')
   }
 
-  function getSchedulePackages(scheduleId) {
-    return packages.filter(
-      (packageItem) =>
-        packageItem.schedule_id === scheduleId
+  function getPackageSessions(packageId) {
+    return sessions.filter(
+      (session) =>
+        session.package_id === packageId
     )
   }
 
-  function getCompletedSessionCount(
-    scheduleItem
-  ) {
-    /*
-      Count completed sessions belonging
-      to the current ongoing package.
-
-      This is important after renewal:
-      old completed packages should not make
-      Renew immediately available again.
-    */
-
-    const currentPackage = packages
-      .filter(
-        (packageItem) =>
-          packageItem.schedule_id ===
-            scheduleItem.id &&
-          packageItem.status === 'ongoing'
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.purchased_at) -
-          new Date(a.purchased_at)
-      )[0]
-
-    if (!currentPackage) {
-      return 0
-    }
-
-    return sessions.filter(
-      (sessionItem) =>
-        sessionItem.package_id ===
-          currentPackage.id &&
-        sessionItem.status === 'completed'
+  function getUsedSessionCount(packageSessions) {
+    return packageSessions.filter(
+      (session) =>
+        session.status === 'completed' ||
+        session.status === 'cancelled'
     ).length
   }
 
   function getStatusClass(status) {
-    if (
-      status === 'active' ||
-      status === 'ongoing' ||
-      status === 'paid'
-    ) {
+    if (status === 'scheduled') {
+      return 'status-active'
+    }
+
+    if (status === 'completed') {
       return 'status-active'
     }
 
     if (
-      status === 'suspended' ||
       status === 'cancelled' ||
-      status === 'completed' ||
-      status === 'pending'
+      status === 'canceled'
     ) {
       return 'status-inactive'
     }
@@ -286,387 +530,22 @@ function Schedules() {
     return ''
   }
 
-  /* =========================
-     GENERATE
-  ========================= */
+  function getAvailableDates() {
+    const dates = []
 
-  async function handleGenerate(scheduleItem) {
-    setActionLoading(scheduleItem.id)
-    setError('')
-
-    const {
-      error: generateError,
-    } = await supabase.rpc(
-      'admin_generate_package',
-      {
-        p_schedule_id:
-          scheduleItem.id,
+    for (const slot of availability) {
+      if (!dates.includes(slot.slot_date)) {
+        dates.push(slot.slot_date)
       }
-    )
-
-    if (generateError) {
-      console.error(
-        'Generate package error:',
-        generateError
-      )
-
-      setError(generateError.message)
-      setActionLoading(null)
-      return
     }
 
-    await loadSchedulesOverview()
-
-    setActionLoading(null)
+    return dates
   }
 
-  /* =========================
-     RENEW
-  ========================= */
-
-  async function handleRenew(scheduleItem) {
-    setActionLoading(scheduleItem.id)
-    setError('')
-
-    const {
-      error: renewError,
-    } = await supabase.rpc(
-      'admin_renew_package',
-      {
-        p_schedule_id:
-          scheduleItem.id,
-      }
-    )
-
-    if (renewError) {
-      console.error(
-        'Renew package error:',
-        renewError
-      )
-
-      setError(renewError.message)
-      setActionLoading(null)
-      return
-    }
-
-    await loadSchedulesOverview()
-
-    setActionLoading(null)
-  }
-
-  /* =========================
-     SUSPEND
-  ========================= */
-
-  async function handleSuspend() {
-    if (!suspendSchedule) {
-      return
-    }
-
-    setActionLoading(
-      suspendSchedule.id
-    )
-    setError('')
-
-    const {
-      error: suspendError,
-    } = await supabase.rpc(
-      'admin_suspend_schedule',
-      {
-        p_schedule_id:
-          suspendSchedule.id,
-      }
-    )
-
-    if (suspendError) {
-      console.error(
-        'Suspend schedule error:',
-        suspendError
-      )
-
-      setError(suspendError.message)
-      setActionLoading(null)
-      return
-    }
-
-    setSuspendSchedule(null)
-
-    await loadSchedulesOverview()
-
-    setActionLoading(null)
-  }
-
-  /* =========================
-     RESUME
-  ========================= */
-
-  async function handleResume(scheduleItem) {
-    setActionLoading(scheduleItem.id)
-    setError('')
-
-    const {
-      error: resumeError,
-    } = await supabase.rpc(
-      'admin_resume_schedule',
-      {
-        p_schedule_id:
-          scheduleItem.id,
-      }
-    )
-
-    if (resumeError) {
-      console.error(
-        'Resume schedule error:',
-        resumeError
-      )
-
-      setError(resumeError.message)
-      setActionLoading(null)
-      return
-    }
-
-    await loadSchedulesOverview()
-
-    setActionLoading(null)
-  }
-
-  /* =========================
-     CANCEL
-  ========================= */
-
-  async function handleCancel() {
-    if (!cancelSchedule) {
-      return
-    }
-
-    setActionLoading(
-      cancelSchedule.id
-    )
-    setError('')
-
-    const {
-      error: cancelError,
-    } = await supabase.rpc(
-      'admin_cancel_schedule',
-      {
-        p_schedule_id:
-          cancelSchedule.id,
-      }
-    )
-
-    if (cancelError) {
-      console.error(
-        'Cancel schedule error:',
-        cancelError
-      )
-
-      setError(cancelError.message)
-      setActionLoading(null)
-      return
-    }
-
-    setCancelSchedule(null)
-
-    await loadSchedulesOverview()
-
-    setActionLoading(null)
-  }
-
-  /* =========================
-     ACTIONS
-  ========================= */
-
-  function renderActions(scheduleItem) {
-    const isLoading =
-      actionLoading === scheduleItem.id
-
-    const schedulePackages =
-      getSchedulePackages(
-        scheduleItem.id
-      )
-
-    const hasPackage =
-      schedulePackages.length > 0
-
-    const completedSessions =
-      getCompletedSessionCount(
-        scheduleItem
-      )
-
-    if (
-      scheduleItem.status ===
-      'cancelled'
-    ) {
-      return (
-        <div className="schedule-actions">
-          <button
-            className="btn btn-ghost"
-            onClick={() =>
-              window.location.href =
-                `/schedules/${scheduleItem.id}/sessions`
-            }
-          >
-            View Sessions
-          </button>
-        </div>
-      )
-    }
-
-    if (
-      scheduleItem.status ===
-      'suspended'
-    ) {
-      return (
-        <div className="schedule-actions">
-          {/* Resume */}
-
-          <button
-            className="btn btn-secondary"
-            disabled={isLoading}
-            onClick={() =>
-              handleResume(
-                scheduleItem
-              )
-            }
-          >
-            {isLoading
-              ? 'Working...'
-              : 'Resume'}
-          </button>
-
-          {/* Cancel */}
-
-          <button
-            className="btn btn-ghost"
-            disabled={isLoading}
-            onClick={() =>
-              setCancelSchedule(
-                scheduleItem
-              )
-            }
-          >
-            Cancel
-          </button>
-
-          {/* View Sessions */}
-
-          <button
-            className="btn btn-ghost"
-            disabled={isLoading}
-            onClick={() =>
-              window.location.href =
-                `/schedules/${scheduleItem.id}/sessions`
-            }
-          >
-            View Sessions
-          </button>
-        </div>
-      )
-    }
-
-    if (!hasPackage) {
-      return (
-        <div className="schedule-actions">
-          {/* Generate */}
-
-          <button
-            className="btn btn-secondary"
-            disabled={isLoading}
-            onClick={() =>
-              handleGenerate(
-                scheduleItem
-              )
-            }
-          >
-            {isLoading
-              ? 'Generating...'
-              : 'Generate Sessions'}
-          </button>
-
-          {/* Cancel */}
-
-          <button
-            className="btn btn-ghost"
-            disabled={isLoading}
-            onClick={() =>
-              setCancelSchedule(
-                scheduleItem
-              )
-            }
-          >
-            Cancel
-          </button>
-        </div>
-      )
-    }
-
-    return (
-      <div className="schedule-actions">
-        {/* Renew */}
-
-        <button
-          className="btn btn-secondary"
-          disabled={
-            isLoading ||
-            completedSessions < 4
-          }
-          title={
-            completedSessions < 4
-              ? 'Available after 4 sessions are completed'
-              : 'Renew package'
-          }
-          onClick={() =>
-            handleRenew(
-              scheduleItem
-            )
-          }
-        >
-          {isLoading
-            ? 'Renewing...'
-            : 'Renew'}
-        </button>
-
-        {/* Suspend */}
-
-        <button
-          className="btn btn-ghost"
-          disabled={isLoading}
-          onClick={() =>
-            setSuspendSchedule(
-              scheduleItem
-            )
-          }
-        >
-          Suspend
-        </button>
-
-        {/* Cancel */}
-
-        <button
-          className="btn btn-ghost"
-          disabled={isLoading}
-          onClick={() =>
-            setCancelSchedule(
-              scheduleItem
-            )
-          }
-        >
-          Cancel
-        </button>
-
-        {/* View Sessions */}
-
-        <button
-          className="btn btn-ghost"
-          disabled={isLoading}
-          onClick={() =>
-            window.location.href =
-              `/schedules/${scheduleItem.id}/sessions`
-          }
-        >
-          View Sessions
-        </button>
-      </div>
+  function getAvailableTimesForDate(date) {
+    return availability.filter(
+      (slot) =>
+        slot.slot_date === date
     )
   }
 
@@ -680,7 +559,7 @@ function Schedules() {
         <AcademyHeader />
 
         <div className="page-state">
-          Loading schedules...
+          Loading sessions...
         </div>
       </div>
     )
@@ -690,7 +569,7 @@ function Schedules() {
      ERROR
   ========================= */
 
-  if (error) {
+  if (error && !rescheduleSession) {
     return (
       <div className="academy-app">
         <AcademyHeader />
@@ -698,6 +577,24 @@ function Schedules() {
         <main className="academy-main">
           <div className="error-box">
             {error}
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  /* =========================
+     NOT FOUND
+  ========================= */
+
+  if (!schedule) {
+    return (
+      <div className="academy-app">
+        <AcademyHeader />
+
+        <main className="academy-main">
+          <div className="empty-state">
+            Schedule not found.
           </div>
         </main>
       </div>
@@ -715,284 +612,595 @@ function Schedules() {
       <main className="academy-main">
         <div className="page-header">
           <div className="page-header-copy">
-            <h1>Schedules</h1>
+            <h1>Schedule Sessions</h1>
 
             <p>
-              Manage recurring student
-              schedules and generated
-              sessions
+              View the sessions generated from
+              this schedule
             </p>
+          </div>
+
+          <div className="form-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                window.location.href =
+                  '/schedules'
+              }}
+            >
+              Back to Schedules
+            </button>
           </div>
         </div>
 
-        {schedules.length === 0 ? (
-          <div className="card">
+        {/* SCHEDULE SUMMARY */}
+
+        <div className="card detail-card">
+          <div className="detail-card-header">
+            <h2 className="detail-card-title">
+              Schedule
+            </h2>
+          </div>
+
+          <div className="detail-grid">
+            <div>
+              <div className="detail-label">
+                Student
+              </div>
+
+              <div className="detail-value detail-value-strong">
+                {getStudentName()}
+              </div>
+            </div>
+
+            <div>
+              <div className="detail-label">
+                Coach
+              </div>
+
+              <div className="detail-value detail-value-strong">
+                {getCoachName()}
+              </div>
+            </div>
+
+            <div>
+              <div className="detail-label">
+                Program
+              </div>
+
+              <div className="detail-value">
+                {getProgramLabel()}
+              </div>
+            </div>
+
+            <div>
+              <div className="detail-label">
+                Recurring Time
+              </div>
+
+              <div className="detail-value">
+                {getDayLabel(
+                  schedule.day_of_week
+                )}
+                {' · '}
+                {formatTime(
+                  schedule.start_time
+                )}
+                {'–'}
+                {formatTime(
+                  schedule.end_time
+                )}
+              </div>
+            </div>
+
+            <div>
+              <div className="detail-label">
+                Timezone
+              </div>
+
+              <div className="detail-value">
+                {schedule.timezone}
+              </div>
+            </div>
+
+            <div>
+              <div className="detail-label">
+                Schedule Status
+              </div>
+
+              <div className="detail-value">
+                <span
+                  className={`status-badge ${
+                    schedule.status ===
+                    'suspended'
+                      ? 'status-inactive'
+                      : 'status-active'
+                  }`}
+                >
+                  {schedule.status ===
+                  'suspended'
+                    ? 'Suspended'
+                    : 'Active'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PACKAGES */}
+
+        {packages.length === 0 ? (
+          <div
+            className="card"
+            style={{
+              marginTop: '24px',
+            }}
+          >
             <div className="empty-state">
-              No schedules found.
+              No packages have been generated
+              for this schedule yet.
             </div>
           </div>
         ) : (
-          <div className="card">
-            <div className="table-scroll">
-              <table className="students-table">
-                <thead>
-                  <tr>
-                    <th>Student</th>
-                    <th>Coach</th>
-                    <th>Program</th>
-                    <th>Recurring Time</th>
-                    <th>Status</th>
-                    <th>Sessions</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
+          <div
+            style={{
+              marginTop: '24px',
+            }}
+          >
+            {packages.map(
+              (packageItem, index) => {
+                const packageSessions =
+                  getPackageSessions(
+                    packageItem.id
+                  )
 
-                <tbody>
-                  {schedules.map(
-                    (scheduleItem) => {
-                      const schedulePackages =
-                        getSchedulePackages(
-                          scheduleItem.id
-                        )
+                const usedSessionCount =
+                  getUsedSessionCount(
+                    packageSessions
+                  )
 
-                      const completedSessions =
-                        getCompletedSessionCount(
-                          scheduleItem
-                        )
+                return (
+                  <div
+                    className="card schedule-package"
+                    key={packageItem.id}
+                  >
+                    {/* Package Header */}
 
-                      return (
-                        <tr
-                          key={
-                            scheduleItem.id
-                          }
-                        >
-                          <td>
-                            <div className="detail-value-strong">
-                              {getStudentName(
-                                scheduleItem
-                              )}
-                            </div>
-                          </td>
+                    <div className="schedule-package-header">
+                      <h2>
+                        Package {index + 1}
+                      </h2>
 
-                          <td>
-                            {getCoachName(
-                              scheduleItem
-                            )}
-                          </td>
+                      <p>
+                        Created{' '}
+                        {formatDate(
+                          packageItem.purchased_at?.slice(
+                            0,
+                            10
+                          )
+                        )}
+                      </p>
+                    </div>
 
-                          <td>
-                            {getProgramLabel(
-                              scheduleItem
-                            )}
-                          </td>
+                    {/* Package Body */}
 
-                          <td>
-                            {getDayLabel(
-                              scheduleItem.day_of_week
-                            )}
-                            {' · '}
-                            {formatTime(
-                              scheduleItem.start_time
-                            )}
-                            {'–'}
-                            {formatTime(
-                              scheduleItem.end_time
-                            )}
-                          </td>
+                    <div className="schedule-package-body">
+                      {/* Package Metadata */}
 
-                          <td>
+                      <div className="schedule-package-meta">
+                        <div className="schedule-package-meta-item">
+                          <div className="detail-label">
+                            Package Status
+                          </div>
+
+                          <div>
                             <span
                               className={`status-badge ${
-                                scheduleItem.status ===
-                                'active'
-                                  ? 'status-active'
-                                  : 'status-inactive'
+                                packageItem.status ===
+                                'suspended'
+                                  ? 'status-inactive'
+                                  : packageItem.status ===
+                                      'finished'
+                                    ? 'status-inactive'
+                                    : 'status-active'
                               }`}
                             >
                               {
-                                scheduleItem.status
+                                packageItem.status
                               }
                             </span>
-                          </td>
+                          </div>
+                        </div>
 
-                          <td>
-                            {schedulePackages.length ===
-                            0 ? (
-                              'None'
-                            ) : (
-                              <div>
-                                <div>
-                                  {
-                                    schedulePackages.length
-                                  }{' '}
-                                  package
-                                  {schedulePackages.length !==
-                                  1
-                                    ? 's'
-                                    : ''}
-                                </div>
+                        <div className="schedule-package-meta-item">
+                          <div className="detail-label">
+                            Payment
+                          </div>
 
-                                {scheduleItem.status ===
-                                  'active' && (
-                                  <div
-                                    className="detail-value"
-                                    style={{
-                                      marginTop:
-                                        '4px',
-                                    }}
-                                  >
-                                    {
-                                      completedSessions
-                                    }{' '}
-                                    completed
-                                  </div>
+                          <div>
+                            <span
+                              className={`status-badge ${
+                                packageItem.payment_status ===
+                                'paid'
+                                  ? 'status-active'
+                                  : packageItem.payment_status ===
+                                      'cancelled'
+                                    ? 'status-inactive'
+                                    : ''
+                              }`}
+                            >
+                              {
+                                packageItem.payment_status
+                              }
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="schedule-package-meta-item">
+                          <div className="detail-label">
+                            Sessions used
+                          </div>
+
+                          <div className="detail-value">
+                            {usedSessionCount} / 4
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sessions */}
+
+                      <div className="schedule-package-sessions">
+                        {packageSessions.length ===
+                        0 ? (
+                          <div className="empty-state">
+                            No sessions found for
+                            this package.
+                          </div>
+                        ) : (
+                          <div className="table-scroll">
+                            <table className="students-table">
+                              <thead>
+                                <tr>
+                                  <th>#</th>
+                                  <th>Date</th>
+                                  <th>Time</th>
+                                  <th>Status</th>
+                                  <th>Notes</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+
+                              <tbody>
+                                {packageSessions.map(
+                                  (
+                                    session,
+                                    sessionIndex
+                                  ) => {
+                                    const isActionLoading =
+                                      actionLoading ===
+                                      session.id
+
+                                    const isRescheduling =
+                                      rescheduleSession?.id ===
+                                      session.id
+
+                                    const sessionFinished =
+                                      isSessionFinished(
+                                        session
+                                      )
+
+                                    return (
+                                      <tr
+                                        key={
+                                          session.id
+                                        }
+                                      >
+                                        <td>
+                                          {sessionIndex +
+                                            1}
+                                        </td>
+
+                                        <td>
+                                          {formatDate(
+                                            session.session_date
+                                          )}
+                                        </td>
+
+                                        <td>
+                                          {formatTime(
+                                            session.start_time
+                                          )}
+                                          {'–'}
+                                          {formatTime(
+                                            session.end_time
+                                          )}
+                                        </td>
+
+                                        <td>
+                                          <span
+                                            className={`status-badge ${getStatusClass(
+                                              session.status
+                                            )}`}
+                                          >
+                                            {
+                                              session.status
+                                            }
+                                          </span>
+                                        </td>
+
+                                        <td>
+                                          {session.notes ||
+                                            '—'}
+                                        </td>
+
+                                        <td>
+                                          {session.status ===
+                                          'scheduled' ? (
+                                            <div className="schedule-actions">
+                                              {/* Complete */}
+
+                                              <button
+                                                className="btn btn-secondary"
+                                                disabled={
+                                                  !sessionFinished ||
+                                                  isActionLoading ||
+                                                  rescheduleSession !==
+                                                    null
+                                                }
+                                                title={
+                                                  !sessionFinished
+                                                    ? 'Available after the session ends'
+                                                    : 'Complete session'
+                                                }
+                                                onClick={() =>
+                                                  handleCompleteSession(
+                                                    session
+                                                  )
+                                                }
+                                              >
+                                                {isActionLoading &&
+                                                !isRescheduling
+                                                  ? 'Working...'
+                                                  : 'Complete'}
+                                              </button>
+
+                                              {/* Forfeit */}
+
+                                              <button
+                                                className="btn btn-ghost"
+                                                disabled={
+                                                  isActionLoading ||
+                                                  rescheduleSession !==
+                                                    null
+                                                }
+                                                onClick={() =>
+                                                  handleForfeitSession(
+                                                    session
+                                                  )
+                                                }
+                                              >
+                                                Forfeit
+                                              </button>
+
+                                              {/* Reschedule */}
+
+                                              <button
+                                                className="btn btn-ghost"
+                                                disabled={
+                                                  isActionLoading ||
+                                                  rescheduleSession !==
+                                                    null
+                                                }
+                                                onClick={() =>
+                                                  handleOpenReschedule(
+                                                    session
+                                                  )
+                                                }
+                                              >
+                                                Reschedule
+                                              </button>
+
+                                              {/* Reschedule Form */}
+
+                                              {isRescheduling && (
+                                                <div
+                                                  style={{
+                                                    marginTop:
+                                                      '12px',
+                                                    minWidth:
+                                                      '280px',
+                                                  }}
+                                                >
+                                                  {availabilityLoading ? (
+                                                    <div className="detail-value">
+                                                      Finding available slots...
+                                                    </div>
+                                                  ) : (
+                                                    <>
+                                                      <div
+                                                        style={{
+                                                          display:
+                                                            'grid',
+                                                          gap: '8px',
+                                                        }}
+                                                      >
+                                                        <select
+                                                          className="form-input"
+                                                          value={
+                                                            rescheduleDate
+                                                          }
+                                                          onChange={(
+                                                            event
+                                                          ) => {
+                                                            setRescheduleDate(
+                                                              event
+                                                                .target
+                                                                .value
+                                                            )
+                                                            setRescheduleTime(
+                                                              ''
+                                                            )
+                                                          }}
+                                                        >
+                                                          <option value="">
+                                                            Select date
+                                                          </option>
+
+                                                          {getAvailableDates().map(
+                                                            (
+                                                              date
+                                                            ) => (
+                                                              <option
+                                                                key={
+                                                                  date
+                                                                }
+                                                                value={
+                                                                  date
+                                                                }
+                                                              >
+                                                                {formatDate(
+                                                                  date
+                                                                )}
+                                                              </option>
+                                                            )
+                                                          )}
+                                                        </select>
+
+                                                        <select
+                                                          className="form-input"
+                                                          value={
+                                                            rescheduleTime
+                                                          }
+                                                          disabled={
+                                                            !rescheduleDate
+                                                          }
+                                                          onChange={(
+                                                            event
+                                                          ) =>
+                                                            setRescheduleTime(
+                                                              event
+                                                                .target
+                                                                .value
+                                                            )
+                                                          }
+                                                        >
+                                                          <option value="">
+                                                            Select time
+                                                          </option>
+
+                                                          {getAvailableTimesForDate(
+                                                            rescheduleDate
+                                                          ).map(
+                                                            (
+                                                              slot
+                                                            ) => (
+                                                              <option
+                                                                key={`${slot.slot_date}-${slot.start_time}`}
+                                                                value={
+                                                                  slot.start_time
+                                                                }
+                                                              >
+                                                                {formatTime(
+                                                                  slot.start_time
+                                                                )}
+                                                                {'–'}
+                                                                {formatTime(
+                                                                  slot.end_time
+                                                                )}
+                                                              </option>
+                                                            )
+                                                          )}
+                                                        </select>
+                                                      </div>
+
+                                                      {availability.length ===
+                                                        0 && (
+                                                        <div
+                                                          className="detail-value"
+                                                          style={{
+                                                            marginTop:
+                                                              '8px',
+                                                          }}
+                                                        >
+                                                          No available slots found in the next 14 days.
+                                                        </div>
+                                                      )}
+
+                                                      <div
+                                                        className="schedule-actions"
+                                                        style={{
+                                                          marginTop:
+                                                            '10px',
+                                                        }}
+                                                      >
+                                                        <button
+                                                          className="btn btn-secondary"
+                                                          disabled={
+                                                            !rescheduleDate ||
+                                                            !rescheduleTime ||
+                                                            isActionLoading
+                                                          }
+                                                          onClick={
+                                                            handleReschedule
+                                                          }
+                                                        >
+                                                          {isActionLoading
+                                                            ? 'Working...'
+                                                            : 'Confirm Reschedule'}
+                                                        </button>
+
+                                                        <button
+                                                          className="btn btn-ghost"
+                                                          disabled={
+                                                            isActionLoading
+                                                          }
+                                                          onClick={
+                                                            handleCancelReschedule
+                                                          }
+                                                        >
+                                                          Close
+                                                        </button>
+                                                      </div>
+
+                                                      {error && (
+                                                        <div
+                                                          className="error-box"
+                                                          style={{
+                                                            marginTop:
+                                                              '10px',
+                                                          }}
+                                                        >
+                                                          {error}
+                                                        </div>
+                                                      )}
+                                                    </>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </td>
+                                      </tr>
+                                    )
+                                  }
                                 )}
-                              </div>
-                            )}
-                          </td>
-
-                          <td>
-                            {renderActions(
-                              scheduleItem
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    }
-                  )}
-                </tbody>
-              </table>
-            </div>
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+            )}
           </div>
         )}
       </main>
-
-      {/* =========================
-          SUSPEND MODAL
-      ========================= */}
-
-      {suspendSchedule && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h2>Suspend Schedule</h2>
-            </div>
-
-            <div className="modal-body">
-              <p>
-                Suspend the schedule for{' '}
-                <strong>
-                  {getStudentName(
-                    suspendSchedule
-                  )}
-                </strong>
-                ?
-              </p>
-
-              <p>
-                Future scheduled sessions
-                will be placed on hold.
-              </p>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="btn btn-secondary"
-                disabled={
-                  actionLoading ===
-                  suspendSchedule.id
-                }
-                onClick={() =>
-                  setSuspendSchedule(null)
-                }
-              >
-                Close
-              </button>
-
-              <button
-                className="btn btn-primary"
-                disabled={
-                  actionLoading ===
-                  suspendSchedule.id
-                }
-                onClick={
-                  handleSuspend
-                }
-              >
-                {actionLoading ===
-                suspendSchedule.id
-                  ? 'Suspending...'
-                  : 'Suspend'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================
-          CANCEL MODAL
-      ========================= */}
-
-      {cancelSchedule && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h2>Cancel Schedule</h2>
-            </div>
-
-            <div className="modal-body">
-              <p>
-                Cancel the schedule for{' '}
-                <strong>
-                  {getStudentName(
-                    cancelSchedule
-                  )}
-                </strong>
-                ?
-              </p>
-
-              <p>
-                This will cancel future
-                sessions and finish the
-                current package.
-              </p>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="btn btn-secondary"
-                disabled={
-                  actionLoading ===
-                  cancelSchedule.id
-                }
-                onClick={() =>
-                  setCancelSchedule(null)
-                }
-              >
-                Close
-              </button>
-
-              <button
-                className="btn btn-primary"
-                disabled={
-                  actionLoading ===
-                  cancelSchedule.id
-                }
-                onClick={
-                  handleCancel
-                }
-              >
-                {actionLoading ===
-                cancelSchedule.id
-                  ? 'Cancelling...'
-                  : 'Cancel Schedule'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
-export default Schedules
+export default ScheduleSessions
