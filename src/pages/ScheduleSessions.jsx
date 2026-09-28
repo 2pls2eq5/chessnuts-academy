@@ -14,6 +14,7 @@ const DAYS = [
 
 function ScheduleSessions() {
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(null)
   const [schedule, setSchedule] = useState(null)
   const [packages, setPackages] = useState([])
   const [sessions, setSessions] = useState([])
@@ -22,137 +23,195 @@ function ScheduleSessions() {
   const scheduleId =
     window.location.pathname.split('/')[2]
 
-  useEffect(() => {
-    async function loadScheduleSessions() {
-      setLoading(true)
-      setError('')
+  async function loadScheduleSessions() {
+    setLoading(true)
+    setError('')
 
-      /* =========================
-         SCHEDULE
-      ========================= */
+    /* =========================
+       SCHEDULE
+    ========================= */
 
+    const {
+      data: scheduleData,
+      error: scheduleError,
+    } = await supabase
+      .from('student_schedules')
+      .select(`
+        id,
+        student_id,
+        coach_id,
+        program_id,
+        day_of_week,
+        start_time,
+        end_time,
+        timezone,
+        status,
+        students (
+          profiles (
+            display_name
+          )
+        ),
+        coaches (
+          profiles (
+            display_name
+          )
+        ),
+        programs (
+          type,
+          mode,
+          location,
+          duration
+        )
+      `)
+      .eq('id', scheduleId)
+      .single()
+
+    if (scheduleError) {
+      setError(scheduleError.message)
+      setLoading(false)
+      return
+    }
+
+    /* =========================
+       PACKAGES
+    ========================= */
+
+    const {
+      data: packagesData,
+      error: packagesError,
+    } = await supabase
+      .from('student_packages')
+      .select(`
+        id,
+        student_id,
+        program_id,
+        schedule_id,
+        purchased_at,
+        payment_status,
+        status,
+        created_at
+      `)
+      .eq('schedule_id', scheduleId)
+      .order('created_at', {
+        ascending: true,
+      })
+
+    if (packagesError) {
+      setError(packagesError.message)
+      setLoading(false)
+      return
+    }
+
+    /* =========================
+       SESSIONS
+    ========================= */
+
+    const packageIds =
+      (packagesData || []).map(
+        (packageItem) => packageItem.id
+      )
+
+    let sessionsData = []
+
+    if (packageIds.length > 0) {
       const {
-        data: scheduleData,
-        error: scheduleError,
+        data,
+        error: sessionsError,
       } = await supabase
-        .from('student_schedules')
+        .from('class_sessions')
         .select(`
           id,
-          student_id,
-          coach_id,
-          program_id,
-          day_of_week,
+          package_id,
+          session_date,
           start_time,
           end_time,
-          timezone,
           status,
-          students (
-            profiles (
-              display_name
-            )
-          ),
-          coaches (
-            profiles (
-              display_name
-            )
-          ),
-          programs (
-            type,
-            mode,
-            location,
-            duration
-          )
+          notes
         `)
-        .eq('id', scheduleId)
-        .single()
-
-      if (scheduleError) {
-        setError(scheduleError.message)
-        setLoading(false)
-        return
-      }
-
-      /* =========================
-         PACKAGES
-      ========================= */
-
-      const {
-        data: packagesData,
-        error: packagesError,
-      } = await supabase
-        .from('student_packages')
-        .select(`
-          id,
-          student_id,
-          program_id,
-          schedule_id,
-          purchased_at,
-          payment_status,
-          status,
-          created_at
-        `)
-        .eq('schedule_id', scheduleId)
-        .order('created_at', {
+        .in('package_id', packageIds)
+        .order('session_date', {
+          ascending: true,
+        })
+        .order('start_time', {
           ascending: true,
         })
 
-      if (packagesError) {
-        setError(packagesError.message)
+      if (sessionsError) {
+        setError(sessionsError.message)
         setLoading(false)
         return
       }
 
-      /* =========================
-         SESSIONS
-      ========================= */
-
-      const packageIds =
-        (packagesData || []).map(
-          (packageItem) => packageItem.id
-        )
-
-      let sessionsData = []
-
-      if (packageIds.length > 0) {
-        const {
-          data,
-          error: sessionsError,
-        } = await supabase
-          .from('class_sessions')
-          .select(`
-            id,
-            package_id,
-            session_date,
-            start_time,
-            end_time,
-            status,
-            notes
-          `)
-          .in('package_id', packageIds)
-          .order('session_date', {
-            ascending: true,
-          })
-          .order('start_time', {
-            ascending: true,
-          })
-
-        if (sessionsError) {
-          setError(sessionsError.message)
-          setLoading(false)
-          return
-        }
-
-        sessionsData = data || []
-      }
-
-      setSchedule(scheduleData)
-      setPackages(packagesData || [])
-      setSessions(sessionsData)
-      setLoading(false)
+      sessionsData = data || []
     }
 
+    setSchedule(scheduleData)
+    setPackages(packagesData || [])
+    setSessions(sessionsData)
+    setLoading(false)
+  }
+
+  useEffect(() => {
     loadScheduleSessions()
   }, [scheduleId])
+
+  /* =========================
+     SESSION ACTIONS
+  ========================= */
+
+  async function handleCompleteSession(session) {
+    setActionLoading(session.id)
+    setError('')
+
+    const {
+      error: completeError,
+    } = await supabase.rpc(
+      'admin_complete_session',
+      {
+        p_session_id: session.id,
+      }
+    )
+
+    if (completeError) {
+      setError(completeError.message)
+      setActionLoading(null)
+      return
+    }
+
+    await loadScheduleSessions()
+    setActionLoading(null)
+  }
+
+  async function handleForfeitSession(session) {
+    const confirmed = window.confirm(
+      'Forfeit this session?\n\nThis session will be marked as used and will not be rescheduled.'
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setActionLoading(session.id)
+    setError('')
+
+    const {
+      error: forfeitError,
+    } = await supabase.rpc(
+      'admin_forfeit_session',
+      {
+        p_session_id: session.id,
+      }
+    )
+
+    if (forfeitError) {
+      setError(forfeitError.message)
+      setActionLoading(null)
+      return
+    }
+
+    await loadScheduleSessions()
+    setActionLoading(null)
+  }
 
   /* =========================
      HELPERS
@@ -260,8 +319,20 @@ function ScheduleSessions() {
     )
   }
 
+  function getUsedSessionCount(packageSessions) {
+    return packageSessions.filter(
+      (session) =>
+        session.status === 'completed' ||
+        session.status === 'cancelled'
+    ).length
+  }
+
   function getStatusClass(status) {
     if (status === 'scheduled') {
+      return 'status-active'
+    }
+
+    if (status === 'completed') {
       return 'status-active'
     }
 
@@ -483,6 +554,11 @@ function ScheduleSessions() {
                   packageItem.id
                 )
 
+              const usedSessionCount =
+                getUsedSessionCount(
+                  packageSessions
+                )
+
               return (
                 <div
                   className="card schedule-package"
@@ -560,14 +636,11 @@ function ScheduleSessions() {
 
                       <div className="schedule-package-meta-item">
                         <div className="detail-label">
-                          Sessions
+                          Sessions used
                         </div>
 
                         <div className="detail-value">
-                          {
-                            packageSessions.length
-                          }{' '}
-                          / 4
+                          {usedSessionCount} / 4
                         </div>
                       </div>
                     </div>
@@ -591,6 +664,7 @@ function ScheduleSessions() {
                                 <th>Time</th>
                                 <th>Status</th>
                                 <th>Notes</th>
+                                <th>Actions</th>
                               </tr>
                             </thead>
 
@@ -599,51 +673,96 @@ function ScheduleSessions() {
                                 (
                                   session,
                                   sessionIndex
-                                ) => (
-                                  <tr
-                                    key={
-                                      session.id
-                                    }
-                                  >
-                                    <td>
-                                      {sessionIndex +
-                                        1}
-                                    </td>
+                                ) => {
+                                  const isActionLoading =
+                                    actionLoading ===
+                                    session.id
 
-                                    <td>
-                                      {formatDate(
-                                        session.session_date
-                                      )}
-                                    </td>
+                                  return (
+                                    <tr
+                                      key={
+                                        session.id
+                                      }
+                                    >
+                                      <td>
+                                        {sessionIndex +
+                                          1}
+                                      </td>
 
-                                    <td>
-                                      {formatTime(
-                                        session.start_time
-                                      )}
-                                      {'–'}
-                                      {formatTime(
-                                        session.end_time
-                                      )}
-                                    </td>
+                                      <td>
+                                        {formatDate(
+                                          session.session_date
+                                        )}
+                                      </td>
 
-                                    <td>
-                                      <span
-                                        className={`status-badge ${getStatusClass(
-                                          session.status
-                                        )}`}
-                                      >
-                                        {
-                                          session.status
-                                        }
-                                      </span>
-                                    </td>
+                                      <td>
+                                        {formatTime(
+                                          session.start_time
+                                        )}
+                                        {'–'}
+                                        {formatTime(
+                                          session.end_time
+                                        )}
+                                      </td>
 
-                                    <td>
-                                      {session.notes ||
-                                        '—'}
-                                    </td>
-                                  </tr>
-                                )
+                                      <td>
+                                        <span
+                                          className={`status-badge ${getStatusClass(
+                                            session.status
+                                          )}`}
+                                        >
+                                          {
+                                            session.status
+                                          }
+                                        </span>
+                                      </td>
+
+                                      <td>
+                                        {session.notes ||
+                                          '—'}
+                                      </td>
+
+                                      <td>
+                                        {session.status ===
+                                        'scheduled' ? (
+                                          <div className="schedule-actions">
+                                            <button
+                                              className="btn btn-secondary"
+                                              disabled={
+                                                isActionLoading
+                                              }
+                                              onClick={() =>
+                                                handleCompleteSession(
+                                                  session
+                                                )
+                                              }
+                                            >
+                                              {isActionLoading
+                                                ? 'Working...'
+                                                : 'Complete'}
+                                            </button>
+
+                                            <button
+                                              className="btn btn-ghost"
+                                              disabled={
+                                                isActionLoading
+                                              }
+                                              onClick={() =>
+                                                handleForfeitSession(
+                                                  session
+                                                )
+                                              }
+                                            >
+                                              Forfeit
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          '—'
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )
+                                }
                               )}
                             </tbody>
                           </table>
