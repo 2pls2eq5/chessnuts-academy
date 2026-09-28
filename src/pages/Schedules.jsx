@@ -18,129 +18,128 @@ function Schedules() {
   const [packages, setPackages] = useState([])
   const [requestCount, setRequestCount] = useState(0)
   const [availabilityCount, setAvailabilityCount] = useState(0)
+  const [actionLoading, setActionLoading] = useState(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    async function loadSchedulesOverview() {
-      setLoading(true)
-      setError('')
+  async function loadSchedulesOverview() {
+    setLoading(true)
+    setError('')
 
-      const [
-        {
-          data: schedulesData,
-          error: schedulesError,
-        },
-        {
-          data: packagesData,
-          error: packagesError,
-        },
-        {
-          count: requestCountData,
-          error: requestError,
-        },
-        {
-          count: availabilityCountData,
-          error: availabilityError,
-        },
-      ] = await Promise.all([
-        supabase
-          .from('student_schedules')
-          .select(`
-            id,
-            student_id,
-            coach_id,
-            program_id,
-            day_of_week,
-            start_time,
-            end_time,
-            timezone,
-            status,
-            students (
-              profiles (
-                display_name
-              )
-            ),
-            coaches (
-              profiles (
-                display_name
-              )
-            ),
-            programs (
-              type,
-              mode,
-              location,
-              duration
+    const [
+      {
+        data: schedulesData,
+        error: schedulesError,
+      },
+      {
+        data: packagesData,
+        error: packagesError,
+      },
+      {
+        count: requestCountData,
+        error: requestError,
+      },
+      {
+        count: availabilityCountData,
+        error: availabilityError,
+      },
+    ] = await Promise.all([
+      supabase
+        .from('student_schedules')
+        .select(`
+          id,
+          student_id,
+          coach_id,
+          program_id,
+          day_of_week,
+          start_time,
+          end_time,
+          timezone,
+          status,
+          students (
+            profiles (
+              display_name
             )
-          `)
-          .order('day_of_week', {
-            ascending: true,
-          })
-          .order('start_time', {
-            ascending: true,
-          }),
+          ),
+          coaches (
+            profiles (
+              display_name
+            )
+          ),
+          programs (
+            type,
+            mode,
+            location,
+            duration
+          )
+        `)
+        .order('day_of_week', {
+          ascending: true,
+        })
+        .order('start_time', {
+          ascending: true,
+        }),
 
-        supabase
-          .from('student_packages')
-          .select(`
-            id,
-            schedule_id,
-            student_id,
-            program_id,
-            status,
-            payment_status
-          `),
+      supabase
+        .from('student_packages')
+        .select(`
+          id,
+          schedule_id,
+          student_id,
+          program_id,
+          status,
+          payment_status
+        `),
 
-        supabase
-          .from('student_schedule_requests')
-          .select('id', {
-            count: 'exact',
-            head: true,
-          })
-          .eq('status', 'pending'),
+      supabase
+        .from('student_schedule_requests')
+        .select('id', {
+          count: 'exact',
+          head: true,
+        })
+        .eq('status', 'pending'),
 
-        supabase
-          .from('coach_availability')
-          .select('id', {
-            count: 'exact',
-            head: true,
-          })
-          .eq('status', 'active'),
-      ])
+      supabase
+        .from('coach_availability')
+        .select('id', {
+          count: 'exact',
+          head: true,
+        })
+        .eq('status', 'active'),
+    ])
 
-      if (schedulesError) {
-        setError(schedulesError.message)
-        setLoading(false)
-        return
-      }
-
-      if (packagesError) {
-        setError(packagesError.message)
-        setLoading(false)
-        return
-      }
-
-      if (requestError) {
-        setError(requestError.message)
-        setLoading(false)
-        return
-      }
-
-      if (availabilityError) {
-        setError(availabilityError.message)
-        setLoading(false)
-        return
-      }
-
-      setSchedules(schedulesData || [])
-      setPackages(packagesData || [])
-      setRequestCount(requestCountData || 0)
-      setAvailabilityCount(
-        availabilityCountData || 0
-      )
-
+    if (schedulesError) {
+      setError(schedulesError.message)
       setLoading(false)
+      return
     }
 
+    if (packagesError) {
+      setError(packagesError.message)
+      setLoading(false)
+      return
+    }
+
+    if (requestError) {
+      setError(requestError.message)
+      setLoading(false)
+      return
+    }
+
+    if (availabilityError) {
+      setError(availabilityError.message)
+      setLoading(false)
+      return
+    }
+
+    setSchedules(schedulesData || [])
+    setPackages(packagesData || [])
+    setRequestCount(requestCountData || 0)
+    setAvailabilityCount(availabilityCountData || 0)
+
+    setLoading(false)
+  }
+
+  useEffect(() => {
     loadSchedulesOverview()
   }, [])
 
@@ -218,6 +217,34 @@ function Schedules() {
     )
   }
 
+  async function handleGenerateSessions(scheduleItem) {
+    setActionLoading(scheduleItem.id)
+    setError('')
+
+    const { error: generateError } =
+      await supabase.rpc(
+        'admin_generate_package',
+        {
+          p_schedule_id: scheduleItem.id,
+        }
+      )
+
+    if (generateError) {
+      console.error(
+        'Generate package error:',
+        generateError
+      )
+
+      setError(generateError.message)
+      setActionLoading(null)
+      return
+    }
+
+    await loadSchedulesOverview()
+
+    setActionLoading(null)
+  }
+
   function handleAction(action, scheduleItem) {
     console.log(
       `Schedule action: ${action}`,
@@ -233,6 +260,9 @@ function Schedules() {
   function renderActions(scheduleItem) {
     const generated =
       hasGeneratedPackage(scheduleItem)
+
+    const isGenerating =
+      actionLoading === scheduleItem.id
 
     if (scheduleItem.status === 'suspended') {
       return (
@@ -281,13 +311,15 @@ function Schedules() {
           <button
             className="btn btn-primary"
             onClick={() =>
-              handleAction(
-                'generate_sessions',
+              handleGenerateSessions(
                 scheduleItem
               )
             }
+            disabled={isGenerating}
           >
-            Generate Sessions
+            {isGenerating
+              ? 'Generating...'
+              : 'Generate Sessions'}
           </button>
 
           <button
@@ -298,6 +330,7 @@ function Schedules() {
                 scheduleItem
               )
             }
+            disabled={isGenerating}
           >
             Cancel
           </button>
@@ -369,9 +402,14 @@ function Schedules() {
 
   if (error) {
     return (
-      <div className="error-page">
-        <h1>Chessnuts Academy</h1>
-        <p>{error}</p>
+      <div className="academy-app">
+        <AcademyHeader />
+
+        <main className="academy-main">
+          <div className="error-box">
+            {error}
+          </div>
+        </main>
       </div>
     )
   }
