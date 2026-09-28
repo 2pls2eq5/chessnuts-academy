@@ -15,6 +15,7 @@ const DAYS = [
 function Schedules() {
   const [loading, setLoading] = useState(true)
   const [schedules, setSchedules] = useState([])
+  const [packages, setPackages] = useState([])
   const [requestCount, setRequestCount] = useState(0)
   const [availabilityCount, setAvailabilityCount] = useState(0)
   const [error, setError] = useState('')
@@ -28,6 +29,10 @@ function Schedules() {
         {
           data: schedulesData,
           error: schedulesError,
+        },
+        {
+          data: packagesData,
+          error: packagesError,
         },
         {
           count: requestCountData,
@@ -49,6 +54,7 @@ function Schedules() {
             start_time,
             end_time,
             timezone,
+            status,
             students (
               profiles (
                 display_name
@@ -58,6 +64,12 @@ function Schedules() {
               profiles (
                 display_name
               )
+            ),
+            programs (
+              type,
+              mode,
+              location,
+              duration
             )
           `)
           .order('day_of_week', {
@@ -66,6 +78,16 @@ function Schedules() {
           .order('start_time', {
             ascending: true,
           }),
+
+        supabase
+          .from('student_packages')
+          .select(`
+            id,
+            student_id,
+            program_id,
+            status,
+            payment_status
+          `),
 
         supabase
           .from('student_schedule_requests')
@@ -90,6 +112,12 @@ function Schedules() {
         return
       }
 
+      if (packagesError) {
+        setError(packagesError.message)
+        setLoading(false)
+        return
+      }
+
       if (requestError) {
         setError(requestError.message)
         setLoading(false)
@@ -103,6 +131,7 @@ function Schedules() {
       }
 
       setSchedules(schedulesData || [])
+      setPackages(packagesData || [])
       setRequestCount(requestCountData || 0)
       setAvailabilityCount(
         availabilityCountData || 0
@@ -134,6 +163,198 @@ function Schedules() {
 
   function formatTime(time) {
     return time?.slice(0, 5) || '—'
+  }
+
+  function getProgramLabel(scheduleItem) {
+    const program = scheduleItem.programs
+
+    if (!program) {
+      return 'Unknown Program'
+    }
+
+    const typeLabel = {
+      PRIVATE: 'Private',
+      GROUP: 'Group',
+      SCHOOL: 'School',
+    }
+
+    const modeLabel = {
+      ONLINE: 'Online',
+      OFFLINE: 'Offline',
+    }
+
+    const locationLabel = {
+      COACH_PLACE: 'Coach Place',
+      STUDENT_PLACE: 'Student Place',
+    }
+
+    const parts = [
+      typeLabel[program.type] || program.type,
+      modeLabel[program.mode] || program.mode,
+    ]
+
+    if (
+      program.location &&
+      program.type !== 'SCHOOL'
+    ) {
+      parts.push(
+        locationLabel[program.location] ||
+          program.location
+      )
+    }
+
+    if (program.duration) {
+      parts.push(`${program.duration} min`)
+    }
+
+    return parts.join(' · ')
+  }
+
+  function hasGeneratedPackage(scheduleItem) {
+    return packages.some(
+      (packageItem) =>
+        packageItem.student_id ===
+          scheduleItem.student_id &&
+        packageItem.program_id ===
+          scheduleItem.program_id
+    )
+  }
+
+  function handleAction(action, scheduleItem) {
+    console.log(
+      `Schedule action: ${action}`,
+      scheduleItem
+    )
+  }
+
+  function viewSessions(scheduleItem) {
+    window.location.href =
+      `/schedules/${scheduleItem.id}/sessions`
+  }
+
+  function renderActions(scheduleItem) {
+    const generated =
+      hasGeneratedPackage(scheduleItem)
+
+    if (scheduleItem.status === 'suspended') {
+      return (
+        <div className="form-actions schedule-actions">
+          <button
+            className="btn btn-secondary"
+            onClick={() =>
+              handleAction(
+                'resume',
+                scheduleItem
+              )
+            }
+          >
+            Resume
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() =>
+              handleAction(
+                'cancel',
+                scheduleItem
+              )
+            }
+          >
+            Cancel
+          </button>
+
+          {generated && (
+            <button
+              className="btn btn-primary"
+              onClick={() =>
+                viewSessions(scheduleItem)
+              }
+            >
+              View Sessions
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    if (!generated) {
+      return (
+        <div className="form-actions schedule-actions">
+          <button
+            className="btn btn-primary"
+            onClick={() =>
+              handleAction(
+                'generate_sessions',
+                scheduleItem
+              )
+            }
+          >
+            Generate Sessions
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() =>
+              handleAction(
+                'cancel',
+                scheduleItem
+              )
+            }
+          >
+            Cancel
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="form-actions schedule-actions">
+        <button
+          className="btn btn-primary"
+          onClick={() =>
+            handleAction(
+              'renew',
+              scheduleItem
+            )
+          }
+        >
+          Renew
+        </button>
+
+        <button
+          className="btn btn-secondary"
+          onClick={() =>
+            handleAction(
+              'suspend',
+              scheduleItem
+            )
+          }
+        >
+          Suspend
+        </button>
+
+        <button
+          className="btn btn-secondary"
+          onClick={() =>
+            handleAction(
+              'cancel',
+              scheduleItem
+            )
+          }
+        >
+          Cancel
+        </button>
+
+        <button
+          className="btn btn-secondary"
+          onClick={() =>
+            viewSessions(scheduleItem)
+          }
+        >
+          View Sessions
+        </button>
+      </div>
+    )
   }
 
   if (loading) {
@@ -173,7 +394,7 @@ function Schedules() {
           </div>
         </div>
 
-        {/* Upcoming Schedules */}
+        {/* Schedules */}
         <div className="card table-card">
           <div
             className="form-header"
@@ -183,7 +404,7 @@ function Schedules() {
               textAlign: 'center',
             }}
           >
-            <h2>Upcoming Schedules</h2>
+            <h2>Schedules</h2>
 
             <p>
               Approved recurring student schedules
@@ -208,7 +429,9 @@ function Schedules() {
                     <th>Time</th>
                     <th>Student</th>
                     <th>Coach</th>
-                    <th>Timezone</th>
+                    <th>Program</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
 
@@ -240,7 +463,31 @@ function Schedules() {
                       </td>
 
                       <td>
-                        {scheduleItem.timezone}
+                        {getProgramLabel(
+                          scheduleItem
+                        )}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`status-badge ${
+                            scheduleItem.status ===
+                            'suspended'
+                              ? 'status-inactive'
+                              : 'status-active'
+                          }`}
+                        >
+                          {scheduleItem.status ===
+                          'suspended'
+                            ? 'Suspended'
+                            : 'Active'}
+                        </span>
+                      </td>
+
+                      <td>
+                        {renderActions(
+                          scheduleItem
+                        )}
                       </td>
                     </tr>
                   ))}
