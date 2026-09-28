@@ -19,7 +19,7 @@ const TIMEZONES = [
   'Asia/Jayapura',
 ]
 
-function Requests() {
+function ScheduleRequests() {
   const [loading, setLoading] = useState(true)
   const [requests, setRequests] = useState([])
 
@@ -876,4 +876,4 @@ function Requests() {
   )
 }
 
-export default Requests
+export default ScheduleRequests
