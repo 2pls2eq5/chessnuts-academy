@@ -23,6 +23,7 @@ function Schedules() {
 
   const [suspendModalOpen, setSuspendModalOpen] =
     useState(false)
+
   const [selectedSchedule, setSelectedSchedule] =
     useState(null)
 
@@ -139,7 +140,9 @@ function Schedules() {
     setSchedules(schedulesData || [])
     setPackages(packagesData || [])
     setRequestCount(requestCountData || 0)
-    setAvailabilityCount(availabilityCountData || 0)
+    setAvailabilityCount(
+      availabilityCountData || 0
+    )
 
     setLoading(false)
   }
@@ -299,7 +302,36 @@ function Schedules() {
     setActionLoading(null)
   }
 
-  function handleAction(action, scheduleItem) {
+  async function handleAction(action, scheduleItem) {
+    if (action === 'resume') {
+      setActionLoading(scheduleItem.id)
+      setError('')
+
+      const { error: resumeError } =
+        await supabase.rpc(
+          'admin_resume_schedule',
+          {
+            p_schedule_id: scheduleItem.id,
+          }
+        )
+
+      if (resumeError) {
+        console.error(
+          'Resume schedule error:',
+          resumeError
+        )
+
+        setError(resumeError.message)
+        setActionLoading(null)
+        return
+      }
+
+      await loadSchedulesOverview()
+
+      setActionLoading(null)
+      return
+    }
+
     console.log(
       `Schedule action: ${action}`,
       scheduleItem
@@ -315,7 +347,7 @@ function Schedules() {
     const generated =
       hasGeneratedPackage(scheduleItem)
 
-    const isGenerating =
+    const isLoading =
       actionLoading === scheduleItem.id
 
     if (scheduleItem.status === 'suspended') {
@@ -329,8 +361,11 @@ function Schedules() {
                 scheduleItem
               )
             }
+            disabled={isLoading}
           >
-            Resume
+            {isLoading
+              ? 'Resuming...'
+              : 'Resume'}
           </button>
 
           <button
@@ -341,6 +376,7 @@ function Schedules() {
                 scheduleItem
               )
             }
+            disabled={isLoading}
           >
             Cancel
           </button>
@@ -351,6 +387,7 @@ function Schedules() {
               onClick={() =>
                 viewSessions(scheduleItem)
               }
+              disabled={isLoading}
             >
               View Sessions
             </button>
@@ -369,9 +406,9 @@ function Schedules() {
                 scheduleItem
               )
             }
-            disabled={isGenerating}
+            disabled={isLoading}
           >
-            {isGenerating
+            {isLoading
               ? 'Generating...'
               : 'Generate Sessions'}
           </button>
@@ -384,7 +421,7 @@ function Schedules() {
                 scheduleItem
               )
             }
-            disabled={isGenerating}
+            disabled={isLoading}
           >
             Cancel
           </button>
@@ -402,6 +439,7 @@ function Schedules() {
               scheduleItem
             )
           }
+          disabled={isLoading}
         >
           Renew
         </button>
@@ -411,7 +449,7 @@ function Schedules() {
           onClick={() =>
             openSuspendModal(scheduleItem)
           }
-          disabled={isGenerating}
+          disabled={isLoading}
         >
           Suspend
         </button>
@@ -424,7 +462,7 @@ function Schedules() {
               scheduleItem
             )
           }
-          disabled={isGenerating}
+          disabled={isLoading}
         >
           Cancel
         </button>
@@ -434,6 +472,7 @@ function Schedules() {
           onClick={() =>
             viewSessions(scheduleItem)
           }
+          disabled={isLoading}
         >
           View Sessions
         </button>
@@ -705,21 +744,25 @@ function Schedules() {
                 <h2>Suspend Schedule?</h2>
 
                 <p>
-                  This will suspend the recurring schedule
-                  and put future scheduled sessions on hold.
+                  This will suspend the recurring
+                  schedule and put future scheduled
+                  sessions on hold.
                 </p>
               </div>
 
               <div
                 style={{
-                  background: 'var(--background-secondary)',
+                  background:
+                    'var(--background-secondary)',
                   borderRadius: '8px',
                   padding: '16px',
                   marginBottom: '24px',
                 }}
               >
                 <strong>
-                  {getStudentName(selectedSchedule)}
+                  {getStudentName(
+                    selectedSchedule
+                  )}
                 </strong>
 
                 <div
@@ -745,7 +788,9 @@ function Schedules() {
                     marginTop: '6px',
                   }}
                 >
-                  {getCoachName(selectedSchedule)}
+                  {getCoachName(
+                    selectedSchedule
+                  )}
                 </div>
               </div>
 
