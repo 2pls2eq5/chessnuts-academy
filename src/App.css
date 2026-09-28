@@ -445,6 +445,87 @@
 }
 
 /* =========================================================
+   SCHEDULE SESSIONS
+========================================================= */
+
+.schedule-package {
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.schedule-package-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-package-header h2 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.schedule-package-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.schedule-package-body {
+  padding: 24px 28px 28px;
+}
+
+.schedule-package-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px 32px;
+  margin-bottom: 28px;
+}
+
+.schedule-package-meta-item {
+  min-width: 0;
+}
+
+.schedule-package-sessions {
+  margin-top: 4px;
+}
+
+.schedule-package-sessions .table-scroll {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+@media (max-width: 800px) {
+  .schedule-package-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .schedule-package-header {
+    padding: 22px 24px;
+  }
+
+  .schedule-package-body {
+    padding: 22px 24px 24px;
+  }
+}
+
+@media (max-width: 500px) {
+  .schedule-package-meta {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .schedule-package-header {
+    padding: 20px;
+  }
+
+  .schedule-package-body {
+    padding: 20px;
+  }
+}
+
+/* =========================================================
    STUDENT DETAIL
 ========================================================= */
 
