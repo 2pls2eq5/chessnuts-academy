@@ -17,7 +17,7 @@ import AddParent from './pages/AddParent'
 
 import Schedule from './pages/Schedules'
 import Availability from './pages/Availability'
-import Requests from './pages/Requests'
+import Requests from './pages/ScheduleRequests'
 
 function App() {
   const [loading, setLoading] = useState(true)
@@ -303,7 +303,7 @@ function App() {
       />
     )
   }
-  if (path === '/schedules/requests') {
+  if (path === '/schedules/schedulerequests') {
   return (
     <Requests 
       user={user}
