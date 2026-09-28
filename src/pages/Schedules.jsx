@@ -21,6 +21,11 @@ function Schedules() {
   const [actionLoading, setActionLoading] = useState(null)
   const [error, setError] = useState('')
 
+  const [suspendModalOpen, setSuspendModalOpen] =
+    useState(false)
+  const [selectedSchedule, setSelectedSchedule] =
+    useState(null)
+
   async function loadSchedulesOverview() {
     setLoading(true)
     setError('')
@@ -245,6 +250,55 @@ function Schedules() {
     setActionLoading(null)
   }
 
+  function openSuspendModal(scheduleItem) {
+    setSelectedSchedule(scheduleItem)
+    setSuspendModalOpen(true)
+  }
+
+  function closeSuspendModal() {
+    if (actionLoading) {
+      return
+    }
+
+    setSuspendModalOpen(false)
+    setSelectedSchedule(null)
+  }
+
+  async function handleSuspend() {
+    if (!selectedSchedule) {
+      return
+    }
+
+    setActionLoading(selectedSchedule.id)
+    setError('')
+
+    const { error: suspendError } =
+      await supabase.rpc(
+        'admin_suspend_schedule',
+        {
+          p_schedule_id: selectedSchedule.id,
+        }
+      )
+
+    if (suspendError) {
+      console.error(
+        'Suspend schedule error:',
+        suspendError
+      )
+
+      setError(suspendError.message)
+      setActionLoading(null)
+      return
+    }
+
+    setSuspendModalOpen(false)
+    setSelectedSchedule(null)
+
+    await loadSchedulesOverview()
+
+    setActionLoading(null)
+  }
+
   function handleAction(action, scheduleItem) {
     console.log(
       `Schedule action: ${action}`,
@@ -355,11 +409,9 @@ function Schedules() {
         <button
           className="btn btn-secondary"
           onClick={() =>
-            handleAction(
-              'suspend',
-              scheduleItem
-            )
+            openSuspendModal(scheduleItem)
           }
+          disabled={isGenerating}
         >
           Suspend
         </button>
@@ -372,6 +424,7 @@ function Schedules() {
               scheduleItem
             )
           }
+          disabled={isGenerating}
         >
           Cancel
         </button>
@@ -427,6 +480,97 @@ function Schedules() {
               Manage and view the Academy teaching
               schedules
             </p>
+          </div>
+        </div>
+
+        {/* Schedule Management */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              'repeat(2, minmax(0, 1fr))',
+            gap: '20px',
+            marginBottom: '24px',
+          }}
+        >
+          {/* Coach Availability */}
+          <div
+            className="card"
+            style={{
+              textAlign: 'center',
+              padding: '24px',
+            }}
+          >
+            <div className="form-header">
+              <h2>Coach Availability</h2>
+
+              <p>
+                Manage recurring times when coaches are
+                available for scheduling.
+              </p>
+            </div>
+
+            <p>
+              <strong>{availabilityCount}</strong>{' '}
+              active availability ranges
+            </p>
+
+            <div
+              className="form-actions"
+              style={{
+                justifyContent: 'center',
+              }}
+            >
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  window.location.href =
+                    '/schedules/availability'
+                }}
+              >
+                Manage Availability
+              </button>
+            </div>
+          </div>
+
+          {/* Schedule Requests */}
+          <div
+            className="card"
+            style={{
+              textAlign: 'center',
+              padding: '24px',
+            }}
+          >
+            <div className="form-header">
+              <h2>Schedule Requests</h2>
+
+              <p>
+                Review schedule requests submitted by
+                students.
+              </p>
+            </div>
+
+            <p>
+              <strong>{requestCount}</strong>{' '}
+              pending requests
+            </p>
+
+            <div
+              className="form-actions"
+              style={{
+                justifyContent: 'center',
+              }}
+            >
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  window.location.href =
+                    '/schedules/requests'
+                }}
+              >
+                View Requests
+              </button>
+            </div>
           </div>
         </div>
 
@@ -532,98 +676,113 @@ function Schedules() {
             </div>
           )}
         </div>
-
-        {/* Schedule Management */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(2, minmax(0, 1fr))',
-            gap: '20px',
-            marginTop: '24px',
-          }}
-        >
-          {/* Coach Availability */}
-          <div
-            className="card"
-            style={{
-              textAlign: 'center',
-              padding: '24px',
-            }}
-          >
-            <div className="form-header">
-              <h2>Coach Availability</h2>
-
-              <p>
-                Manage recurring times when coaches are
-                available for scheduling.
-              </p>
-            </div>
-
-            <p>
-              <strong>{availabilityCount}</strong>{' '}
-              active availability ranges
-            </p>
-
-            <div
-              className="form-actions"
-              style={{
-                justifyContent: 'center',
-              }}
-            >
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  window.location.href =
-                    '/schedules/availability'
-                }}
-              >
-                Manage Availability
-              </button>
-            </div>
-          </div>
-
-          {/* Schedule Requests */}
-          <div
-            className="card"
-            style={{
-              textAlign: 'center',
-              padding: '24px',
-            }}
-          >
-            <div className="form-header">
-              <h2>Schedule Requests</h2>
-
-              <p>
-                Review schedule requests submitted by
-                students.
-              </p>
-            </div>
-
-            <p>
-              <strong>{requestCount}</strong>{' '}
-              pending requests
-            </p>
-
-            <div
-              className="form-actions"
-              style={{
-                justifyContent: 'center',
-              }}
-            >
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  window.location.href =
-                    '/schedules/requests'
-                }}
-              >
-                View Requests
-              </button>
-            </div>
-          </div>
-        </div>
       </main>
+
+      {/* Suspend Confirmation Modal */}
+      {suspendModalOpen &&
+        selectedSchedule && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '20px',
+            }}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                padding: '28px',
+              }}
+            >
+              <div className="form-header">
+                <h2>Suspend Schedule?</h2>
+
+                <p>
+                  This will suspend the recurring schedule
+                  and put future scheduled sessions on hold.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: 'var(--background-secondary)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '24px',
+                }}
+              >
+                <strong>
+                  {getStudentName(selectedSchedule)}
+                </strong>
+
+                <div
+                  style={{
+                    marginTop: '6px',
+                  }}
+                >
+                  {getDayLabel(
+                    selectedSchedule.day_of_week
+                  )}{' '}
+                  ·{' '}
+                  {formatTime(
+                    selectedSchedule.start_time
+                  )}
+                  {'–'}
+                  {formatTime(
+                    selectedSchedule.end_time
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: '6px',
+                  }}
+                >
+                  {getCoachName(selectedSchedule)}
+                </div>
+              </div>
+
+              <div
+                className="form-actions"
+                style={{
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <button
+                  className="btn btn-secondary"
+                  onClick={closeSuspendModal}
+                  disabled={
+                    actionLoading ===
+                    selectedSchedule.id
+                  }
+                >
+                  Keep Active
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSuspend}
+                  disabled={
+                    actionLoading ===
+                    selectedSchedule.id
+                  }
+                >
+                  {actionLoading ===
+                  selectedSchedule.id
+                    ? 'Suspending...'
+                    : 'Suspend Schedule'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }
