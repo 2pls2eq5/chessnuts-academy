@@ -83,6 +83,7 @@ function Schedules() {
           .from('student_packages')
           .select(`
             id,
+            schedule_id,
             student_id,
             program_id,
             status,
@@ -213,10 +214,7 @@ function Schedules() {
   function hasGeneratedPackage(scheduleItem) {
     return packages.some(
       (packageItem) =>
-        packageItem.student_id ===
-          scheduleItem.student_id &&
-        packageItem.program_id ===
-          scheduleItem.program_id
+        packageItem.schedule_id === scheduleItem.id
     )
   }
 
