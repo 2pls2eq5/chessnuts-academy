@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { loadGoogleMaps } from '../lib/googleMaps'
 
 function AddressPicker({
   value,
@@ -7,22 +8,28 @@ function AddressPicker({
 }) {
   const containerRef = useRef(null)
   const autocompleteRef = useRef(null)
+  const onChangeRef = useRef(onChange)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  useEffect(() => {
     let cancelled = false
+    let autocomplete = null
 
     async function initAutocomplete() {
       try {
         setLoading(true)
         setError('')
 
-        if (!window.google?.maps) {
-          throw new Error(
-            'Google Maps JavaScript API is not loaded.'
-          )
+        await loadGoogleMaps()
+
+        if (cancelled) {
+          return
         }
 
         const { PlaceAutocompleteElement } =
@@ -34,7 +41,7 @@ function AddressPicker({
           return
         }
 
-        const autocomplete =
+        autocomplete =
           new PlaceAutocompleteElement()
 
         autocomplete.placeholder =
@@ -50,6 +57,66 @@ function AddressPicker({
           'en'
         )
 
+        autocomplete.disabled = disabled
+
+        async function handlePlaceSelect(
+          event
+        ) {
+          try {
+            const place =
+              event.placePrediction.toPlace()
+
+            await place.fetchFields({
+              fields: [
+                'formattedAddress',
+                'location',
+              ],
+            })
+
+            const address =
+              place.formattedAddress || ''
+
+            const latitude =
+              place.location?.lat?.() ?? null
+
+            const longitude =
+              place.location?.lng?.() ?? null
+
+            if (
+              !address ||
+              latitude === null ||
+              longitude === null
+            ) {
+              setError(
+                'The selected place does not have complete location data.'
+              )
+              return
+            }
+
+            setError('')
+
+            onChangeRef.current({
+              address,
+              latitude,
+              longitude,
+            })
+          } catch (error) {
+            console.error(
+              'Failed to retrieve place details:',
+              error
+            )
+
+            setError(
+              'Failed to retrieve the selected address.'
+            )
+          }
+        }
+
+        autocomplete.addEventListener(
+          'gmp-select',
+          handlePlaceSelect
+        )
+
         autocompleteRef.current =
           autocomplete
 
@@ -57,10 +124,9 @@ function AddressPicker({
           autocomplete
         )
 
-        autocomplete.addEventListener(
-          'gmp-select',
-          handlePlaceSelect
-        )
+        if (value) {
+          autocomplete.value = value
+        }
 
         setLoading(false)
       } catch (error) {
@@ -82,75 +148,18 @@ function AddressPicker({
       }
     }
 
-    async function handlePlaceSelect(
-      event
-    ) {
-      try {
-        const place =
-          event.placePrediction.toPlace()
-
-        await place.fetchFields({
-          fields: [
-            'formattedAddress',
-            'location',
-          ],
-        })
-
-        const address =
-          place.formattedAddress || ''
-
-        const latitude =
-          place.location?.lat?.() ?? null
-
-        const longitude =
-          place.location?.lng?.() ?? null
-
-        if (
-          !address ||
-          latitude === null ||
-          longitude === null
-        ) {
-          setError(
-            'The selected place does not have complete location data.'
-          )
-          return
-        }
-
-        setError('')
-
-        onChange({
-          address,
-          latitude,
-          longitude,
-        })
-      } catch (error) {
-        console.error(
-          'Failed to retrieve place details:',
-          error
-        )
-
-        setError(
-          'Failed to retrieve the selected address.'
-        )
-      }
-    }
-
     initAutocomplete()
 
     return () => {
       cancelled = true
 
-      if (autocompleteRef.current) {
-        autocompleteRef.current.removeEventListener(
-          'gmp-select',
-          handlePlaceSelect
-        )
-
-        autocompleteRef.current.remove()
-        autocompleteRef.current = null
+      if (autocomplete) {
+        autocomplete.remove()
       }
+
+      autocompleteRef.current = null
     }
-  }, [onChange])
+  }, [])
 
   useEffect(() => {
     if (
@@ -161,6 +170,13 @@ function AddressPicker({
         value
     }
   }, [value])
+
+  useEffect(() => {
+    if (autocompleteRef.current) {
+      autocompleteRef.current.disabled =
+        disabled
+    }
+  }, [disabled])
 
   return (
     <div>
