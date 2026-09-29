@@ -5,6 +5,7 @@ import {
   getStudentLevelLabel,
 } from '../constants/studentLevels'
 import AcademyHeader from '../components/AcademyHeader'
+import AddressPicker from '../components/AddressPicker'
 
 function StudentDetail({ studentId }) {
   const [loading, setLoading] = useState(true)
@@ -1318,19 +1319,31 @@ function StudentDetail({ studentId }) {
                 Address
               </label>
 
-              <input
-                className="form-input"
-                type="text"
-                value={
-                  form.address
-                }
-                onChange={(event) =>
-                  updateField(
-                    'address',
-                    event.target.value
-                  )
-                }
+              <AddressPicker
+                value={form.address}
+                disabled={saving}
+                onChange={({
+                  address,
+                  latitude,
+                  longitude,
+                }) => {
+                  setForm((current) => ({
+                    ...current,
+                    address,
+                    latitude,
+                    longitude,
+                  }))
+                }}
               />
+
+              {form.latitude !== null &&
+                form.longitude !== null && (
+                  <div className="form-help">
+                    Location saved:{' '}
+                    {form.latitude},{' '}
+                    {form.longitude}
+                  </div>
+                )}
             </div>
 
             <div className="form-group">
