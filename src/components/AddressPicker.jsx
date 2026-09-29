@@ -1,6 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadGoogleMaps } from '../lib/googleMaps'
 
+function buildShortAddress(components, fallback) {
+  if (!components?.length) {
+    return fallback
+  }
+
+  const get = (type) =>
+    components.find((component) =>
+      component.types?.includes(type)
+    )?.longText || ''
+
+  const street = get('route')
+  const number = get('street_number')
+  const neighborhood =
+    get('neighborhood') ||
+    get('sublocality_level_1')
+  const city =
+    get('locality') ||
+    get('administrative_area_level_2')
+
+  const streetPart = [street, number]
+    .filter(Boolean)
+    .join(' ')
+
+  return [
+    streetPart,
+    neighborhood,
+    city,
+  ]
+    .filter(Boolean)
+    .join(', ') || fallback
+}
+
 function AddressPicker({
   value,
   latitude,
@@ -19,6 +51,8 @@ function AddressPicker({
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [shortAddress, setShortAddress] =
+    useState('')
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -55,39 +89,27 @@ function AddressPicker({
           return
         }
 
-        /*
-         * Initial map position.
-         *
-         * If the profile already has coordinates,
-         * use them.
-         *
-         * Otherwise start around Jakarta.
-         */
-        const initialPosition =
+        const hasCoordinates =
           latitude !== null &&
           latitude !== undefined &&
           longitude !== null &&
           longitude !== undefined
-            ? {
-                lat: Number(latitude),
-                lng: Number(longitude),
-              }
-            : {
-                lat: -6.2088,
-                lng: 106.8456,
-              }
+
+        const initialPosition = hasCoordinates
+          ? {
+              lat: Number(latitude),
+              lng: Number(longitude),
+            }
+          : {
+              lat: -6.2088,
+              lng: 106.8456,
+            }
 
         const map = new Map(
           mapContainerRef.current,
           {
             center: initialPosition,
-            zoom:
-              latitude !== null &&
-              latitude !== undefined &&
-              longitude !== null &&
-              longitude !== undefined
-                ? 17
-                : 11,
+            zoom: hasCoordinates ? 17 : 11,
             mapId: 'DEMO_MAP_ID',
             streetViewControl: false,
             mapTypeControl: false,
@@ -97,28 +119,17 @@ function AddressPicker({
 
         mapRef.current = map
 
-        /*
-         * Create draggable marker.
-         */
         marker = new AdvancedMarkerElement({
           map,
-          position:
-            latitude !== null &&
-            latitude !== undefined &&
-            longitude !== null &&
-            longitude !== undefined
-              ? initialPosition
-              : null,
+          position: hasCoordinates
+            ? initialPosition
+            : null,
           gmpDraggable: true,
           title: 'Drag to adjust location',
         })
 
         markerRef.current = marker
 
-        /*
-         * When user finishes dragging the pin,
-         * save the new coordinates.
-         */
         dragListener =
           marker.addEventListener(
             'gmp-dragend',
@@ -148,9 +159,6 @@ function AddressPicker({
             }
           )
 
-        /*
-         * Create address autocomplete.
-         */
         autocomplete =
           new PlaceAutocompleteElement()
 
@@ -176,9 +184,6 @@ function AddressPicker({
         autocompleteRef.current =
           autocomplete
 
-        /*
-         * When user selects an address.
-         */
         autocomplete.addEventListener(
           'gmp-select',
           async (event) => {
@@ -190,6 +195,7 @@ function AddressPicker({
                 fields: [
                   'formattedAddress',
                   'location',
+                  'addressComponents',
                 ],
               })
 
@@ -213,6 +219,12 @@ function AddressPicker({
                 return
               }
 
+              const compactAddress =
+                buildShortAddress(
+                  place.addressComponents,
+                  address
+                )
+
               const position = {
                 lat: selectedLatitude,
                 lng: selectedLongitude,
@@ -222,6 +234,10 @@ function AddressPicker({
               map.setZoom(17)
 
               marker.position = position
+
+              setShortAddress(
+                compactAddress
+              )
 
               setError('')
 
@@ -242,10 +258,6 @@ function AddressPicker({
             }
           }
         )
-
-        if (value) {
-          autocomplete.value = value
-        }
 
         setLoading(false)
       } catch (error) {
@@ -307,19 +319,29 @@ function AddressPicker({
         }}
       />
 
+      {shortAddress && (
+        <div
+          style={{
+            marginBottom: '12px',
+            fontWeight: 500,
+          }}
+        >
+          {shortAddress}
+        </div>
+      )}
+
       <div
         ref={mapContainerRef}
         style={{
           width: '100%',
-          height: '300px',
+          height: '220px',
           borderRadius: '8px',
           overflow: 'hidden',
         }}
       />
 
       <div className="form-help">
-        Search for the address, then drag the pin
-        to the exact location if needed.
+        Drag the pin to adjust the location.
       </div>
 
       {loading && (
@@ -333,16 +355,6 @@ function AddressPicker({
           {error}
         </div>
       )}
-
-      {latitude !== null &&
-        latitude !== undefined &&
-        longitude !== null &&
-        longitude !== undefined && (
-          <div className="form-help">
-            Location: {Number(latitude).toFixed(6)},{' '}
-            {Number(longitude).toFixed(6)}
-          </div>
-        )}
     </div>
   )
 }
