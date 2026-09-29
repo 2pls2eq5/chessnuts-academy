@@ -1320,13 +1320,11 @@ function StudentDetail({ studentId }) {
               </label>
 
               <AddressPicker
-                value={form.address}
-                disabled={saving}
-                onChange={({
-                  address,
-                  latitude,
-                  longitude,
-                }) => {
+  value={form.address}
+  latitude={form.latitude}
+  longitude={form.longitude}
+  disabled={saving}
+  onChange={({ address, latitude, longitude }) => {
                   setForm((current) => ({
                     ...current,
                     address,
