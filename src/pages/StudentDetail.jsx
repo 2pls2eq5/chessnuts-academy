@@ -1320,11 +1320,15 @@ function StudentDetail({ studentId }) {
               </label>
 
               <AddressPicker
-  value={form.address}
-  latitude={form.latitude}
-  longitude={form.longitude}
-  disabled={saving}
-  onChange={({ address, latitude, longitude }) => {
+                value={form.address}
+                latitude={form.latitude}
+                longitude={form.longitude}
+                disabled={saving}
+                onChange={({
+                  address,
+                  latitude,
+                  longitude,
+                }) => {
                   setForm((current) => ({
                     ...current,
                     address,
@@ -1333,15 +1337,6 @@ function StudentDetail({ studentId }) {
                   }))
                 }}
               />
-
-              {form.latitude !== null &&
-                form.longitude !== null && (
-                  <div className="form-help">
-                    Location saved:{' '}
-                    {form.latitude},{' '}
-                    {form.longitude}
-                  </div>
-                )}
             </div>
 
             <div className="form-group">
