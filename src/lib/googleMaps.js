@@ -18,9 +18,30 @@ export function loadGoogleMaps() {
 
   googleMapsPromise = new Promise(
     (resolve, reject) => {
-      if (window.google?.maps) {
+      if (
+        window.google?.maps?.importLibrary
+      ) {
         resolve(window.google.maps)
         return
+      }
+
+      const callbackName =
+        '__googleMapsInit'
+
+      window[callbackName] = () => {
+        delete window[callbackName]
+
+        if (
+          window.google?.maps?.importLibrary
+        ) {
+          resolve(window.google.maps)
+        } else {
+          reject(
+            new Error(
+              'Google Maps loaded, but importLibrary is unavailable.'
+            )
+          )
+        }
       }
 
       const script =
@@ -29,24 +50,13 @@ export function loadGoogleMaps() {
       script.src =
         `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
           apiKey
-        )}&libraries=places&loading=async`
+        )}&loading=async&callback=${callbackName}`
 
       script.async = true
       script.defer = true
 
-      script.onload = () => {
-        if (window.google?.maps) {
-          resolve(window.google.maps)
-        } else {
-          reject(
-            new Error(
-              'Google Maps loaded, but the Maps API is unavailable.'
-            )
-          )
-        }
-      }
-
       script.onerror = () => {
+        delete window[callbackName]
         googleMapsPromise = null
 
         reject(
