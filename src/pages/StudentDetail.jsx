@@ -51,6 +51,8 @@ function StudentDetail({ studentId }) {
     displayName: '',
     phone: '',
     address: '',
+    latitude: null,
+    longitude: null,
     gender: '',
     dateOfBirth: '',
     level: '',
@@ -77,6 +79,8 @@ function StudentDetail({ studentId }) {
             username,
             phone,
             address,
+            latitude,
+            longitude,
             gender,
             date_of_birth
           ),
@@ -150,6 +154,10 @@ function StudentDetail({ studentId }) {
           data.profiles?.phone || '',
         address:
           data.profiles?.address || '',
+        latitude:
+          data.profiles?.latitude ?? null,
+        longitude:
+          data.profiles?.longitude ?? null,
         gender:
           data.profiles?.gender || '',
         dateOfBirth:
@@ -186,6 +194,10 @@ function StudentDetail({ studentId }) {
         student.profiles?.phone || '',
       address:
         student.profiles?.address || '',
+      latitude:
+        student.profiles?.latitude ?? null,
+      longitude:
+        student.profiles?.longitude ?? null,
       gender:
         student.profiles?.gender || '',
       dateOfBirth:
@@ -221,6 +233,8 @@ function StudentDetail({ studentId }) {
             form.displayName,
           p_phone: form.phone,
           p_address: form.address,
+          p_latitude: form.latitude,
+          p_longitude: form.longitude,
           p_gender: form.gender,
           p_date_of_birth:
             form.dateOfBirth || null,
@@ -259,6 +273,12 @@ function StudentDetail({ studentId }) {
 
         address:
           form.address || null,
+
+        latitude:
+          form.latitude,
+
+        longitude:
+          form.longitude,
 
         gender:
           form.gender || null,
