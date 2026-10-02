@@ -24,29 +24,14 @@ return String(value || '').trim().toLowerCase();
 }
 
 function calculateEndTime(startTime, durationMinutes) {
-if (!startTime || !durationMinutes) return '';
+  const [hours, minutes] = startTime.split(':').map(Number);
 
-const [hours, minutes] = startTime.split(':').map(Number);
+  const totalMinutes = hours * 60 + minutes + durationMinutes;
 
-if (
-Number.isNaN(hours) ||
-Number.isNaN(minutes) ||
-Number.isNaN(Number(durationMinutes))
-) {
-return '';
-}
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMinutes = totalMinutes % 60;
 
-const totalMinutes =
-hours * 60 + minutes + Number(durationMinutes);
-
-if (totalMinutes >= 24 * 60) {
-return '';
-}
-
-const endHours = Math.floor(totalMinutes / 60);
-const endMinutes = totalMinutes % 60;
-
-return ${String(endHours).padStart(2, '0')}:${String( endMinutes ).padStart(2, '0')}:00;
+  return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00`;
 }
 
 function isAdjacent(startA, endA, startB, endB) {
