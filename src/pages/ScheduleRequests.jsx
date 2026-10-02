@@ -295,7 +295,7 @@ function ScheduleRequests() {
       program_id: programId,
       location:
         selectedProgram?.location === 'COACH_PLACE'
-          ? 'coach_location'
+          ? 'coach_place'
           : '',
       maps_url: '',
     }))
@@ -320,38 +320,47 @@ function ScheduleRequests() {
     }
 
     /*
-     * Find an adjacent request:
+     * Find an adjacent request.
      *
      * existing.end_time = new.start_time
      * OR
      * new.end_time = existing.start_time
+     *
+     * We identify STUDENT_PLACE from the related
+     * program, because the request's `location`
+     * contains the actual physical student location.
      */
-    const { data: requestCandidates, error: requestError } =
-      await supabase
-        .from('student_schedule_requests')
-        .select(`
-          id,
-          student_id,
-          coach_id,
-          day_of_week,
-          start_time,
-          end_time,
-          timezone,
-          location,
-          status,
-          created_at,
-          students (
-            profiles (
-              display_name
-            )
+    const {
+      data: requestCandidates,
+      error: requestError,
+    } = await supabase
+      .from('student_schedule_requests')
+      .select(`
+        id,
+        student_id,
+        coach_id,
+        program_id,
+        day_of_week,
+        start_time,
+        end_time,
+        timezone,
+        location,
+        status,
+        created_at,
+        students (
+          profiles (
+            display_name
           )
-        `)
-        .eq('coach_id', form.coach_id)
-        .eq('day_of_week', Number(form.day_of_week))
-        .eq('timezone', form.timezone)
-        .eq('location', 'student_location')
-        .in('status', ['pending', 'approved'])
-        .neq('student_id', form.student_id)
+        ),
+        programs (
+          location
+        )
+      `)
+      .eq('coach_id', form.coach_id)
+      .eq('day_of_week', Number(form.day_of_week))
+      .eq('timezone', form.timezone)
+      .in('status', ['pending', 'approved'])
+      .neq('student_id', form.student_id)
 
     if (requestError) {
       throw new Error(requestError.message)
@@ -359,6 +368,13 @@ function ScheduleRequests() {
 
     const matchingRequest =
       (requestCandidates || []).find((request) => {
+        if (
+          request.programs?.location !==
+          'STUDENT_PLACE'
+        ) {
+          return false
+        }
+
         return (
           request.end_time?.slice(0, 5) ===
             form.start_time.slice(0, 5) ||
@@ -380,31 +396,40 @@ function ScheduleRequests() {
       }
     }
 
-    const { data: scheduleCandidates, error: scheduleError } =
-      await supabase
-        .from('student_schedules')
-        .select(`
-          id,
-          student_id,
-          coach_id,
-          day_of_week,
-          start_time,
-          end_time,
-          timezone,
-          location,
-          status,
-          students (
-            profiles (
-              display_name
-            )
+    /*
+     * If there is no adjacent request, look for
+     * an existing active recurring schedule.
+     */
+    const {
+      data: scheduleCandidates,
+      error: scheduleError,
+    } = await supabase
+      .from('student_schedules')
+      .select(`
+        id,
+        student_id,
+        coach_id,
+        program_id,
+        day_of_week,
+        start_time,
+        end_time,
+        timezone,
+        location,
+        status,
+        students (
+          profiles (
+            display_name
           )
-        `)
-        .eq('coach_id', form.coach_id)
-        .eq('day_of_week', Number(form.day_of_week))
-        .eq('timezone', form.timezone)
-        .eq('location', 'student_location')
-        .eq('status', 'active')
-        .neq('student_id', form.student_id)
+        ),
+        programs (
+          location
+        )
+      `)
+      .eq('coach_id', form.coach_id)
+      .eq('day_of_week', Number(form.day_of_week))
+      .eq('timezone', form.timezone)
+      .eq('status', 'active')
+      .neq('student_id', form.student_id)
 
     if (scheduleError) {
       throw new Error(scheduleError.message)
@@ -412,6 +437,13 @@ function ScheduleRequests() {
 
     const matchingSchedule =
       (scheduleCandidates || []).find((schedule) => {
+        if (
+          schedule.programs?.location !==
+          'STUDENT_PLACE'
+        ) {
+          return false
+        }
+
         return (
           schedule.end_time?.slice(0, 5) ===
             form.start_time.slice(0, 5) ||
@@ -1187,7 +1219,7 @@ function ScheduleRequests() {
 
                           <td>
                             {request.location ===
-                            'coach_location'
+                            'coach_place'
                               ? 'Coach Place'
                               : request.location ||
                                 '—'}
