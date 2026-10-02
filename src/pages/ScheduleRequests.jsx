@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { getStudentLevelLabel } from '../utils/studentLevels';
-import AcademyHeader from '../components/AcademyHeader';
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { getStudentLevelLabel } from '../constants/studentLevels'
+import AcademyHeader from '../components/AcademyHeader'
 
 const DAYS = [
   { value: 0, label: 'Sunday' },
@@ -11,58 +11,25 @@ const DAYS = [
   { value: 4, label: 'Thursday' },
   { value: 5, label: 'Friday' },
   { value: 6, label: 'Saturday' },
-];
+]
 
 const TIMEZONES = [
   'Asia/Jakarta',
   'Asia/Makassar',
   'Asia/Jayapura',
-];
+]
 
-function normalizeLocation(value) {
-  return String(value || '').trim().toLowerCase();
-}
+function ScheduleRequests() {
+  const [loading, setLoading] = useState(true)
+  const [scheduleRequests, setScheduleRequests] =
+    useState([])
 
-function calculateEndTime(startTime, durationMinutes) {
-  if (!startTime || !durationMinutes) {
-    return '';
-  }
+  const [students, setStudents] = useState([])
+  const [coaches, setCoaches] = useState([])
+  const [programs, setPrograms] = useState([])
 
-  const [hours, minutes] = startTime.split(':').map(Number);
-
-  const totalMinutes =
-    hours * 60 + minutes + Number(durationMinutes);
-
-  const endHours =
-    Math.floor(totalMinutes / 60) % 24;
-
-  const endMinutes = totalMinutes % 60;
-
-  return `${String(endHours).padStart(2, '0')}:${String(
-    endMinutes
-  ).padStart(2, '0')}:00`;
-}
-
-function isAdjacent(startA, endA, startB, endB) {
-  return endA === startB || endB === startA;
-}
-
-export default function ScheduleRequests() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const [scheduleRequests, setScheduleRequests] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [coaches, setCoaches] = useState([]);
-  const [programs, setPrograms] = useState([]);
-
-  const [search, setSearch] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState('');
-
-  const [locationCandidate, setLocationCandidate] = useState(null);
-  const [showLocationModal, setShowLocationModal] =
-    useState(false);
+  const [search, setSearch] = useState('')
+  const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState({
     student_id: '',
@@ -71,58 +38,21 @@ export default function ScheduleRequests() {
     day_of_week: '',
     start_time: '',
     timezone: 'Asia/Jakarta',
-    location: '',
-    maps_url: '',
     notes: '',
-  });
+  })
 
-  const selectedProgram = programs.find(
-    (program) => program.id === form.program_id
-  );
-
-  const programLocation = normalizeLocation(
-    selectedProgram?.location
-  );
-
-  const isStudentLocation =
-    programLocation === 'student_location';
-
-  const isCoachLocation =
-    programLocation === 'coach_location';
-
-  const endTime = selectedProgram
-    ? calculateEndTime(
-        form.start_time,
-        selectedProgram.duration
-      )
-    : '';
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    setLoading(true);
-    setError('');
-
-    try {
-      await Promise.all([
-        loadScheduleRequests(),
-        loadFormData(),
-      ]);
-    } catch (err) {
-      console.error(err);
-      setError(
-        err.message ||
-          'Failed to load schedule requests.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [formLoading, setFormLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [formError, setFormError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [approvingId, setApprovingId] = useState(null)
+  const [rejectingId, setRejectingId] = useState(null)
 
   async function loadScheduleRequests() {
-    const { data, error: queryError } = await supabase
+    setLoading(true)
+    setError('')
+
+    const { data, error } = await supabase
       .from('student_schedule_requests')
       .select(`
         id,
@@ -133,13 +63,9 @@ export default function ScheduleRequests() {
         start_time,
         end_time,
         timezone,
-        location,
-        maps_url,
         notes,
         status,
         student_level,
-        related_request_id,
-        related_schedule_id,
         created_at,
         students (
           profiles (
@@ -152,7 +78,6 @@ export default function ScheduleRequests() {
           )
         ),
         programs (
-          name,
           type,
           mode,
           location,
@@ -160,72 +85,102 @@ export default function ScheduleRequests() {
         )
       `)
       .order('created_at', {
-        ascending: false,
-      });
+        ascending: true,
+      })
 
-    if (queryError) {
-      throw queryError;
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
     }
 
-    setScheduleRequests(data || []);
+    setScheduleRequests(data || [])
+    setLoading(false)
   }
 
   async function loadFormData() {
     const [
-      studentsResult,
-      coachesResult,
-      programsResult,
+      { data: studentsData, error: studentsError },
+      { data: coachesData, error: coachesError },
+      { data: programsData, error: programsError },
     ] = await Promise.all([
       supabase
         .from('students')
         .select(`
           id,
+          level,
+          status,
           profiles (
             display_name
           )
         `)
-        .eq('status', 'active'),
+        .eq('status', 'active')
+        .order('profiles(display_name)', {
+          ascending: true,
+        }),
 
       supabase
         .from('coaches')
         .select(`
           id,
+          status,
           profiles (
             display_name
           )
         `)
-        .eq('status', 'active'),
+        .eq('status', 'active')
+        .order('profiles(display_name)', {
+          ascending: true,
+        }),
 
       supabase
         .from('programs')
         .select(`
           id,
-          name,
           type,
           mode,
           location,
           duration
         `)
-        .eq('is_active', true)
-        .order('name'),
-    ]);
+        .order('type', {
+          ascending: true,
+        })
+        .order('mode', {
+          ascending: true,
+        })
+        .order('duration', {
+          ascending: true,
+        }),
+    ])
 
-    if (studentsResult.error) {
-      throw studentsResult.error;
+    if (studentsError) {
+      setFormError(studentsError.message)
+      return
     }
 
-    if (coachesResult.error) {
-      throw coachesResult.error;
+    if (coachesError) {
+      setFormError(coachesError.message)
+      return
     }
 
-    if (programsResult.error) {
-      throw programsResult.error;
+    if (programsError) {
+      setFormError(programsError.message)
+      return
     }
 
-    setStudents(studentsResult.data || []);
-    setCoaches(coachesResult.data || []);
-    setPrograms(programsResult.data || []);
+    setStudents(studentsData || [])
+    setCoaches(coachesData || [])
+    setPrograms(programsData || [])
   }
+
+  useEffect(() => {
+    async function loadPage() {
+      await loadScheduleRequests()
+      await loadFormData()
+    }
+
+    loadPage()
+  }, [])
 
   function resetForm() {
     setForm({
@@ -235,547 +190,304 @@ export default function ScheduleRequests() {
       day_of_week: '',
       start_time: '',
       timezone: 'Asia/Jakarta',
-      location: '',
-      maps_url: '',
       notes: '',
-    });
+    })
 
-    setLocationCandidate(null);
-    setShowLocationModal(false);
+    setFormError('')
+  }
+
+  function openForm() {
+    resetForm()
+    setActionError('')
+    setShowForm(true)
   }
 
   function closeForm() {
-    if (saving) {
-      return;
-    }
-
-    setShowForm(false);
-    setError('');
-    resetForm();
-  }
-
-  function handleChange(event) {
-    const { name, value } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
-
-    if (name === 'program_id') {
-      setForm((current) => ({
-        ...current,
-        program_id: value,
-        location: '',
-        maps_url: '',
-      }));
-
-      setLocationCandidate(null);
-      setShowLocationModal(false);
-    }
-  }
-
-  async function findAdjacentLocationCandidate() {
-    if (
-      !form.coach_id ||
-      form.day_of_week === '' ||
-      !form.start_time ||
-      !endTime ||
-      !form.timezone
-    ) {
-      return null;
-    }
-
-    const dayOfWeek = Number(form.day_of_week);
-
-    const [
-      requestsResult,
-      schedulesResult,
-    ] = await Promise.all([
-      supabase
-        .from('student_schedule_requests')
-        .select(`
-          id,
-          student_id,
-          coach_id,
-          program_id,
-          day_of_week,
-          start_time,
-          end_time,
-          timezone,
-          location,
-          status,
-          students (
-            profiles (
-              display_name
-            )
-          ),
-          programs (
-            name,
-            type,
-            mode,
-            location
-          )
-        `)
-        .eq('coach_id', form.coach_id)
-        .eq('day_of_week', dayOfWeek)
-        .eq('timezone', form.timezone)
-        .in('status', ['pending', 'approved']),
-
-      supabase
-        .from('student_schedules')
-        .select(`
-          id,
-          student_id,
-          coach_id,
-          program_id,
-          day_of_week,
-          start_time,
-          end_time,
-          timezone,
-          location,
-          status,
-          students (
-            profiles (
-              display_name
-            )
-          ),
-          programs (
-            name,
-            type,
-            mode,
-            location
-          )
-        `)
-        .eq('coach_id', form.coach_id)
-        .eq('day_of_week', dayOfWeek)
-        .eq('timezone', form.timezone)
-        .eq('status', 'active'),
-    ]);
-
-    if (requestsResult.error) {
-      throw requestsResult.error;
-    }
-
-    if (schedulesResult.error) {
-      throw schedulesResult.error;
-    }
-
-    const requestCandidates = (
-      requestsResult.data || []
-    ).filter(
-      (item) =>
-        normalizeLocation(item.location) ===
-        'student_location'
-    );
-
-    const scheduleCandidates = (
-      schedulesResult.data || []
-    ).filter(
-      (item) =>
-        normalizeLocation(item.location) ===
-        'student_location'
-    );
-
-    const candidates = [
-      ...requestCandidates.map((item) => ({
-        ...item,
-        source: 'request',
-      })),
-      ...scheduleCandidates.map((item) => ({
-        ...item,
-        source: 'schedule',
-      })),
-    ];
-
-    return (
-      candidates.find((item) =>
-        isAdjacent(
-          form.start_time,
-          endTime,
-          item.start_time,
-          item.end_time
-        )
-      ) || null
-    );
-  }
-
-  async function createScheduleRequestRpc({
-    relatedRequestId = null,
-    relatedScheduleId = null,
-  } = {}) {
-    const { data, error: rpcError } =
-      await supabase.rpc(
-        'create_schedule_request',
-        {
-          p_student_id: form.student_id,
-          p_coach_id: form.coach_id,
-          p_program_id: form.program_id,
-          p_day_of_week: Number(form.day_of_week),
-          p_start_time: form.start_time,
-          p_end_time: endTime,
-          p_timezone: form.timezone,
-          p_notes: form.notes.trim() || null,
-          p_location: isCoachLocation
-            ? 'coach_location'
-            : form.location.trim() || null,
-          p_maps_url: isStudentLocation
-            ? form.maps_url.trim() || null
-            : null,
-          p_related_request_id: relatedRequestId,
-          p_related_schedule_id: relatedScheduleId,
-        }
-      );
-
-    if (rpcError) {
-      throw rpcError;
-    }
-
-    return data;
-  }
-
-  async function submitScheduleRequest() {
-    setError('');
-
-    if (
-      !form.student_id ||
-      !form.coach_id ||
-      !form.program_id ||
-      form.day_of_week === '' ||
-      !form.start_time ||
-      !form.timezone
-    ) {
-      setError(
-        'Please complete all required fields.'
-      );
-      return;
-    }
-
-    if (!selectedProgram) {
-      setError(
-        'Please select a valid program.'
-      );
-      return;
-    }
-
-    if (!endTime) {
-      setError(
-        'The selected start time cannot fit the program duration.'
-      );
-      return;
-    }
-
-    if (
-      isStudentLocation &&
-      !form.location.trim()
-    ) {
-      setError(
-        'Location is required for Student Place programs.'
-      );
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      /*
-       * PRIVATE + STUDENT_LOCATION:
-       *
-       * Check for an adjacent Student Place class.
-       * If found, ask whether this is the same location.
-       */
-      if (
-        isStudentLocation &&
-        normalizeLocation(selectedProgram.type) ===
-          'private'
-      ) {
-        const candidate =
-          await findAdjacentLocationCandidate();
-
-        if (candidate) {
-          setLocationCandidate(candidate);
-          setShowLocationModal(true);
-          setSaving(false);
-          return;
-        }
-      }
-
-      await createScheduleRequestRpc();
-
-      await loadScheduleRequests();
-
-      setShowForm(false);
-      resetForm();
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          'Failed to create schedule request.'
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function confirmSameLocation() {
-    if (!locationCandidate) {
-      return;
-    }
-
-    setSaving(true);
-    setError('');
-
-    try {
-      const relatedRequestId =
-        locationCandidate.source === 'request'
-          ? locationCandidate.id
-          : null;
-
-      const relatedScheduleId =
-        locationCandidate.source === 'schedule'
-          ? locationCandidate.id
-          : null;
-
-      await createScheduleRequestRpc({
-        relatedRequestId,
-        relatedScheduleId,
-      });
-
-      await loadScheduleRequests();
-
-      setShowForm(false);
-      resetForm();
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          'The related Student Place could not be created.'
-      );
-
-      setShowLocationModal(false);
-      setLocationCandidate(null);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function declineSameLocation() {
-    setShowLocationModal(false);
-    setLocationCandidate(null);
-
-    setError(
-      'Request cancelled because the location is different from the adjacent class.'
-    );
-  }
-
-  async function approveRequest(requestId) {
-    if (saving) {
-      return;
-    }
-
-    setSaving(true);
-    setError('');
-
-    try {
-      const { error: rpcError } =
-        await supabase.rpc(
-          'approve_schedule_request',
-          {
-            p_request_id: requestId,
-          }
-        );
-
-      if (rpcError) {
-        throw rpcError;
-      }
-
-      await loadScheduleRequests();
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          'Failed to approve schedule request.'
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function rejectRequest(requestId) {
-    if (saving) {
-      return;
-    }
-
-    setSaving(true);
-    setError('');
-
-    try {
-      const { error: rpcError } =
-        await supabase.rpc(
-          'reject_schedule_request',
-          {
-            p_request_id: requestId,
-          }
-        );
-
-      if (rpcError) {
-        throw rpcError;
-      }
-
-      await loadScheduleRequests();
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          'Failed to reject schedule request.'
-      );
-    } finally {
-      setSaving(false);
-    }
+    resetForm()
+    setShowForm(false)
   }
 
   function getStudentName(student) {
     return (
-      student?.profiles?.display_name ||
-      'Unknown Student'
-    );
+      student.profiles?.display_name ||
+      'Unnamed Student'
+    )
   }
 
   function getCoachName(coach) {
     return (
-      coach?.profiles?.display_name ||
-      'Unknown Coach'
-    );
+      coach.profiles?.display_name ||
+      'Unnamed Coach'
+    )
+  }
+
+  function formatProgram(program) {
+    if (!program) {
+      return '—'
+    }
+
+    const parts = [
+      program.type,
+      program.mode,
+      program.location,
+      program.duration
+        ? `${program.duration} min`
+        : null,
+    ]
+
+    return parts.filter(Boolean).join(' · ')
   }
 
   function formatTime(time) {
-    if (!time) {
-      return '-';
-    }
-
-    return time.slice(0, 5);
+    return time?.slice(0, 5) || '—'
   }
 
-  function formatStatus(status) {
-    if (!status) {
-      return '-';
-    }
-
+  function getDayLabel(dayOfWeek) {
     return (
-      status.charAt(0).toUpperCase() +
-      status.slice(1)
-    );
+      DAYS.find(
+        (day) => day.value === Number(dayOfWeek)
+      )?.label || 'Unknown'
+    )
   }
 
-  function getLocationLabel(location) {
-    const normalized =
-      normalizeLocation(location);
-
-    if (
-      normalized === 'student_location'
-    ) {
-      return 'Student Place';
+  function calculateEndTime(startTime, duration) {
+    if (!startTime || !duration) {
+      return ''
     }
 
-    if (
-      normalized === 'coach_location'
-    ) {
-      return 'Coach Place';
+    const [hours, minutes] = startTime
+      .split(':')
+      .map(Number)
+
+    const totalMinutes =
+      hours * 60 + minutes + Number(duration)
+
+    if (totalMinutes >= 24 * 60) {
+      return ''
     }
 
-    return location || '-';
+    const endHours = Math.floor(totalMinutes / 60)
+    const endMinutes = totalMinutes % 60
+
+    return `${String(endHours).padStart(2, '0')}:${String(
+      endMinutes
+    ).padStart(2, '0')}`
   }
 
-  const filteredRequests =
+  function handleProgramChange(programId) {
+    setForm((current) => ({
+      ...current,
+      program_id: programId,
+    }))
+  }
+
+  function handleStartTimeChange(startTime) {
+    setForm((current) => ({
+      ...current,
+      start_time: startTime,
+    }))
+  }
+
+  async function createScheduleRequest(e) {
+    e.preventDefault()
+
+    setFormError('')
+
+    if (!form.student_id) {
+      setFormError('Please select a student.')
+      return
+    }
+
+    if (!form.coach_id) {
+      setFormError('Please select a coach.')
+      return
+    }
+
+    if (!form.program_id) {
+      setFormError('Please select a program.')
+      return
+    }
+
+    if (form.day_of_week === '') {
+      setFormError('Please select a day.')
+      return
+    }
+
+    if (!form.start_time) {
+      setFormError('Please select a start time.')
+      return
+    }
+
+    const selectedProgram = programs.find(
+      (program) => program.id === form.program_id
+    )
+
+    if (!selectedProgram) {
+      setFormError('Selected program was not found.')
+      return
+    }
+
+    const endTime = calculateEndTime(
+      form.start_time,
+      selectedProgram.duration
+    )
+
+    if (!endTime) {
+      setFormError(
+        'The selected time is too late for this program duration.'
+      )
+      return
+    }
+
+    setFormLoading(true)
+
+    const { error } = await supabase.rpc(
+      'create_schedule_request',
+      {
+        p_student_id: form.student_id,
+        p_coach_id: form.coach_id,
+        p_program_id: form.program_id,
+        p_day_of_week: Number(form.day_of_week),
+        p_start_time: form.start_time,
+        p_end_time: endTime,
+        p_timezone: form.timezone,
+        p_notes: form.notes.trim() || null,
+      }
+    )
+
+    if (error) {
+      setFormError(error.message)
+      setFormLoading(false)
+      return
+    }
+
+    setFormLoading(false)
+    closeForm()
+    await loadScheduleRequests()
+  }
+
+  async function approveScheduleRequest(requestId) {
+    setApprovingId(requestId)
+    setActionError('')
+
+    const { error } = await supabase.rpc(
+      'approve_schedule_request',
+      {
+        p_request_id: requestId,
+      }
+    )
+
+    if (error) {
+      setActionError(error.message)
+      setApprovingId(null)
+      return
+    }
+
+    await loadScheduleRequests()
+    setApprovingId(null)
+  }
+
+  async function rejectScheduleRequest(requestId) {
+    setRejectingId(requestId)
+    setActionError('')
+
+    const { error } = await supabase.rpc(
+      'reject_schedule_request',
+      {
+        p_request_id: requestId,
+      }
+    )
+
+    if (error) {
+      setActionError(error.message)
+      setRejectingId(null)
+      return
+    }
+
+    await loadScheduleRequests()
+    setRejectingId(null)
+  }
+
+  const filteredScheduleRequests =
     scheduleRequests.filter((request) => {
-      const studentName =
-        getStudentName(
-          request.students
-        ).toLowerCase();
+      const searchText = search.toLowerCase()
 
-      const coachName =
-        getCoachName(
-          request.coaches
-        ).toLowerCase();
+      const studentName = (
+        request.students?.profiles?.display_name ||
+        ''
+      ).toLowerCase()
 
-      const programName = (
-        request.programs?.name || ''
-      ).toLowerCase();
+      const coachName = (
+        request.coaches?.profiles?.display_name ||
+        ''
+      ).toLowerCase()
 
-      const searchText =
-        search.toLowerCase();
+      const status = (
+        request.status || ''
+      ).toLowerCase()
 
       return (
         studentName.includes(searchText) ||
         coachName.includes(searchText) ||
-        programName.includes(searchText)
-      );
-    });
+        status.includes(searchText)
+      )
+    })
+
+  const selectedProgram = programs.find(
+    (program) => program.id === form.program_id
+  )
+
+  const calculatedEndTime = calculateEndTime(
+    form.start_time,
+    selectedProgram?.duration
+  )
 
   if (loading) {
     return (
       <div className="academy-app">
         <AcademyHeader />
 
-        <main className="academy-main">
-          <div className="page-state">
-            Loading schedule requests...
-          </div>
-        </main>
+        <div className="page-state">
+          Loading schedule requests...
+        </div>
       </div>
-    );
+    )
   }
 
-  return (
-    <div className="academy-app">
-      <AcademyHeader />
+  if (error) {
+    return (
+      <div className="error-page">
+        <h1>Chessnuts Academy</h1>
+        <p>{error}</p>
+      </div>
+    )
+  }
 
-      <main className="academy-main">
-        <div className="page-header">
-          <div className="page-header-copy">
-            <h1>Schedule Requests</h1>
+  if (showForm) {
+    return (
+      <div className="academy-app">
+        <AcademyHeader />
 
-            <p>
-              Manage student requests for recurring
-              schedules.
-            </p>
-          </div>
-
-          {!showForm && (
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                setError('');
-                setShowForm(true);
-              }}
-            >
-              + New Request
-            </button>
-          )}
-        </div>
-
-        {error && (
-          <div className="error-box">
-            {error}
-          </div>
-        )}
-
-        {showForm ? (
-          <div className="card form-card">
-            <div className="form-header">
-              <h1>
-                New Schedule Request
-              </h1>
+        <main className="academy-main">
+          <div className="page-header">
+            <div className="page-header-copy">
+              <h1>Add Schedule Request</h1>
 
               <p>
-                Create a recurring schedule request
-                for a student.
+                Create a schedule request for a student
               </p>
             </div>
+          </div>
+
+          <form
+            className="card form-card"
+            onSubmit={createScheduleRequest}
+          >
+            {formError && (
+              <div className="error-box">
+                {formError}
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">
@@ -784,10 +496,13 @@ export default function ScheduleRequests() {
 
               <select
                 className="form-select"
-                name="student_id"
                 value={form.student_id}
-                onChange={handleChange}
-                disabled={saving}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    student_id: e.target.value,
+                  }))
+                }
               >
                 <option value="">
                   Select student
@@ -799,6 +514,11 @@ export default function ScheduleRequests() {
                     value={student.id}
                   >
                     {getStudentName(student)}
+                    {student.level
+                      ? ` · ${getStudentLevelLabel(
+                          student.level
+                        )}`
+                      : ''}
                   </option>
                 ))}
               </select>
@@ -811,10 +531,13 @@ export default function ScheduleRequests() {
 
               <select
                 className="form-select"
-                name="coach_id"
                 value={form.coach_id}
-                onChange={handleChange}
-                disabled={saving}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    coach_id: e.target.value,
+                  }))
+                }
               >
                 <option value="">
                   Select coach
@@ -838,10 +561,12 @@ export default function ScheduleRequests() {
 
               <select
                 className="form-select"
-                name="program_id"
                 value={form.program_id}
-                onChange={handleChange}
-                disabled={saving}
+                onChange={(e) =>
+                  handleProgramChange(
+                    e.target.value
+                  )
+                }
               >
                 <option value="">
                   Select program
@@ -852,95 +577,18 @@ export default function ScheduleRequests() {
                     key={program.id}
                     value={program.id}
                   >
-                    {program.name} — {program.type} —{' '}
-                    {program.mode}
+                    {formatProgram(program)}
                   </option>
                 ))}
               </select>
-            </div>
 
-            {selectedProgram && (
-              <div className="form-group">
-                <label className="form-label">
-                  Location Type
-                </label>
-
-                <input
-                  className="form-input"
-                  value={getLocationLabel(
-                    selectedProgram.location
-                  )}
-                  disabled
-                  readOnly
-                />
-              </div>
-            )}
-
-            {isStudentLocation && (
-              <>
-                <div className="form-group">
-                  <label className="form-label">
-                    Location *
-                  </label>
-
-                  <input
-                    className="form-input"
-                    type="text"
-                    name="location"
-                    value={form.location}
-                    onChange={handleChange}
-                    placeholder="e.g. Starbucks Sunter Mall, lantai 2"
-                    disabled={saving}
-                  />
-
-                  <div className="form-help">
-                    Enter the actual location where
-                    the class will take place.
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    Google Maps URL
-                  </label>
-
-                  <input
-                    className="form-input"
-                    type="url"
-                    name="maps_url"
-                    value={form.maps_url}
-                    onChange={handleChange}
-                    placeholder="https://maps.google.com/..."
-                    disabled={saving}
-                  />
-
-                  <div className="form-help">
-                    Optional. You can paste a Google
-                    Maps link.
-                  </div>
-                </div>
-              </>
-            )}
-
-            {isCoachLocation && (
-              <div className="form-group">
-                <label className="form-label">
-                  Location
-                </label>
-
-                <input
-                  className="form-input"
-                  value="Coach Place"
-                  disabled
-                  readOnly
-                />
-
+              {selectedProgram && (
                 <div className="form-help">
-                  The exact Coach Place / station will
-                  be handled separately.
+                  Duration:{' '}
+                  {selectedProgram.duration} minutes
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="form-group">
               <label className="form-label">
@@ -949,10 +597,13 @@ export default function ScheduleRequests() {
 
               <select
                 className="form-select"
-                name="day_of_week"
                 value={form.day_of_week}
-                onChange={handleChange}
-                disabled={saving}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    day_of_week: e.target.value,
+                  }))
+                }
               >
                 <option value="">
                   Select day
@@ -977,10 +628,12 @@ export default function ScheduleRequests() {
               <input
                 className="form-input"
                 type="time"
-                name="start_time"
                 value={form.start_time}
-                onChange={handleChange}
-                disabled={saving}
+                onChange={(e) =>
+                  handleStartTimeChange(
+                    e.target.value
+                  )
+                }
               />
             </div>
 
@@ -991,15 +644,15 @@ export default function ScheduleRequests() {
 
               <input
                 className="form-input"
-                value={
-                  endTime
-                    ? formatTime(endTime)
-                    : ''
-                }
-                placeholder="Calculated from program duration"
-                disabled
+                type="time"
+                value={calculatedEndTime}
                 readOnly
               />
+
+              <div className="form-help">
+                Automatically calculated from the
+                selected program duration.
+              </div>
             </div>
 
             <div className="form-group">
@@ -1009,21 +662,22 @@ export default function ScheduleRequests() {
 
               <select
                 className="form-select"
-                name="timezone"
                 value={form.timezone}
-                onChange={handleChange}
-                disabled={saving}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    timezone: e.target.value,
+                  }))
+                }
               >
-                {TIMEZONES.map(
-                  (timezone) => (
-                    <option
-                      key={timezone}
-                      value={timezone}
-                    >
-                      {timezone}
-                    </option>
-                  )
-                )}
+                {TIMEZONES.map((timezone) => (
+                  <option
+                    key={timezone}
+                    value={timezone}
+                  >
+                    {timezone}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1034,11 +688,15 @@ export default function ScheduleRequests() {
 
               <textarea
                 className="form-input"
-                name="notes"
+                rows="4"
                 value={form.notes}
-                onChange={handleChange}
-                placeholder="Optional notes"
-                disabled={saving}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    notes: e.target.value,
+                  }))
+                }
+                placeholder="Optional notes..."
               />
             </div>
 
@@ -1047,273 +705,216 @@ export default function ScheduleRequests() {
                 type="button"
                 className="btn btn-secondary"
                 onClick={closeForm}
-                disabled={saving}
+                disabled={formLoading}
               >
                 Cancel
               </button>
 
               <button
-                type="button"
+                type="submit"
                 className="btn btn-primary"
-                onClick={
-                  submitScheduleRequest
-                }
-                disabled={saving}
+                disabled={formLoading}
               >
-                {saving
-                  ? 'Saving...'
+                {formLoading
+                  ? 'Creating...'
                   : 'Create Request'}
               </button>
             </div>
+          </form>
+        </main>
+      </div>
+    )
+  }
+
+  return (
+    <div className="academy-app">
+      <AcademyHeader />
+
+      <main className="academy-main">
+        <div className="page-header">
+          <div className="page-header-copy">
+            <h1>Schedule Requests</h1>
+
+            <p>
+              Review student schedule requests
+            </p>
           </div>
-        ) : (
-          <>
-            <div className="students-toolbar">
-              <input
-                className="search-input"
-                type="text"
-                placeholder="Search student, coach, or program..."
-                value={search}
-                onChange={(event) =>
-                  setSearch(
-                    event.target.value
-                  )
-                }
-              />
+
+          <button
+            className="btn btn-primary"
+            onClick={openForm}
+          >
+            + Add Request
+          </button>
+        </div>
+
+        {actionError && (
+          <div className="error-box">
+            {actionError}
+          </div>
+        )}
+
+        <div className="students-toolbar">
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search schedule requests..."
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+          />
+        </div>
+
+        <div className="card table-card">
+          {filteredScheduleRequests.length === 0 ? (
+            <div className="empty-state">
+              {search
+                ? 'No schedule requests match your search.'
+                : 'No schedule requests found.'}
             </div>
+          ) : (
+            <div className="table-scroll">
+              <table className="students-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Level</th>
+                    <th>Coach</th>
+                    <th>Program</th>
+                    <th>Day</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
 
-            <div className="card table-card">
-              <div className="table-scroll">
-                <table className="students-table">
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Level</th>
-                      <th>Coach</th>
-                      <th>Program</th>
-                      <th>Location</th>
-                      <th>Day</th>
-                      <th>Time</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
+                <tbody>
+                  {filteredScheduleRequests.map(
+                    (request) => {
+                      const status =
+                        request.status ||
+                        'unknown'
 
-                  <tbody>
-                    {filteredRequests.length ===
-                    0 ? (
-                      <tr>
-                        <td
-                          colSpan="9"
-                          className="empty-state"
-                        >
-                          No schedule requests
-                          found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredRequests.map(
-                        (request) => (
-                          <tr
-                            key={request.id}
-                          >
-                            <td>
-                              <strong>
-                                {getStudentName(
-                                  request.students
-                                )}
-                              </strong>
-                            </td>
+                      const isApproving =
+                        approvingId ===
+                        request.id
 
-                            <td>
-                              {request.student_level
-                                ? getStudentLevelLabel(
-                                    request.student_level
-                                  )
-                                : '-'}
-                            </td>
+                      const isRejecting =
+                        rejectingId ===
+                        request.id
 
-                            <td>
-                              {getCoachName(
-                                request.coaches
+                      return (
+                        <tr key={request.id}>
+                          <td>
+                            {request.students
+                              ?.profiles
+                              ?.display_name ||
+                              'Unnamed Student'}
+                          </td>
+
+                          <td>
+                            <span className="level-badge">
+                              {getStudentLevelLabel(
+                                request.student_level
                               )}
-                            </td>
+                            </span>
+                          </td>
 
-                            <td>
-                              {request
-                                .programs
-                                ?.name || '-'}
-                            </td>
+                          <td>
+                            {request.coaches
+                              ?.profiles
+                              ?.display_name ||
+                              'Unnamed Coach'}
+                          </td>
 
-                            <td>
-                              {getLocationLabel(
-                                request.location
-                              )}
-                            </td>
+                          <td>
+                            {formatProgram(
+                              request.programs
+                            )}
+                          </td>
 
-                            <td>
-                              {DAYS.find(
-                                (day) =>
-                                  day.value ===
-                                  request.day_of_week
-                              )?.label || '-'}
-                            </td>
+                          <td>
+                            {getDayLabel(
+                              request.day_of_week
+                            )}
+                          </td>
 
-                            <td>
-                              {formatTime(
-                                request.start_time
-                              )}{' '}
-                              –{' '}
-                              {formatTime(
-                                request.end_time
-                              )}
-                            </td>
+                          <td>
+                            {formatTime(
+                              request.start_time
+                            )}
+                            {'–'}
+                            {formatTime(
+                              request.end_time
+                            )}
+                          </td>
 
-                            <td>
-                              <span className="status-badge">
-                                {formatStatus(
-                                  request.status
-                                )}
-                              </span>
-                            </td>
+                          <td>
+                            <span
+                              className={`status-badge ${
+                                status === 'approved'
+                                  ? 'status-active'
+                                  : 'status-inactive'
+                              }`}
+                            >
+                              {status}
+                            </span>
+                          </td>
 
-                            <td>
-                              {request.status ===
-                                'pending' && (
-                                <div className="form-actions schedule-actions">
-                                  <button
-                                    className="btn btn-primary"
-                                    onClick={() =>
-                                      approveRequest(
-                                        request.id
-                                      )
-                                    }
-                                    disabled={
-                                      saving
-                                    }
-                                  >
-                                    Approve
-                                  </button>
+                          <td>
+                            {status === 'pending' ? (
+                              <div className="form-actions">
+                                <button
+                                  className="btn btn-primary"
+                                  disabled={
+                                    isApproving ||
+                                    isRejecting
+                                  }
+                                  onClick={() =>
+                                    approveScheduleRequest(
+                                      request.id
+                                    )
+                                  }
+                                >
+                                  {isApproving
+                                    ? 'Approving...'
+                                    : 'Approve'}
+                                </button>
 
-                                  <button
-                                    className="btn btn-secondary"
-                                    onClick={() =>
-                                      rejectRequest(
-                                        request.id
-                                      )
-                                    }
-                                    disabled={
-                                      saving
-                                    }
-                                  >
-                                    Reject
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        )
+                                <button
+                                  className="btn btn-secondary"
+                                  disabled={
+                                    isApproving ||
+                                    isRejecting
+                                  }
+                                  onClick={() =>
+                                    rejectScheduleRequest(
+                                      request.id
+                                    )
+                                  }
+                                >
+                                  {isRejecting
+                                    ? 'Rejecting...'
+                                    : 'Reject'}
+                                </button>
+                              </div>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        </tr>
                       )
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    }
+                  )}
+                </tbody>
+              </table>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </main>
-
-      {showLocationModal &&
-        locationCandidate && (
-          <div className="modal-overlay">
-            <div
-              className="modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="location-modal-title"
-            >
-              <div className="modal-header">
-                <h2 id="location-modal-title">
-                  Same Student Place?
-                </h2>
-              </div>
-
-              <div className="modal-body">
-                <p>
-                  This class is immediately
-                  adjacent to another class where
-                  the coach is already going to a
-                  Student Place.
-                </p>
-
-                <div className="card">
-                  <div>
-                    {locationCandidate
-                      .students?.profiles
-                      ?.display_name ||
-                      'Another student'}
-                  </div>
-
-                  <div>
-                    {locationCandidate
-                      .programs?.name ||
-                      'Another program'}
-                  </div>
-
-                  <div>
-                    {formatTime(
-                      locationCandidate.start_time
-                    )}{' '}
-                    –{' '}
-                    {formatTime(
-                      locationCandidate.end_time
-                    )}
-                  </div>
-
-                  <div>
-                    {getLocationLabel(
-                      locationCandidate.location
-                    )}
-                  </div>
-                </div>
-
-                <p>
-                  Is your requested class at the{' '}
-                  <strong>
-                    same location
-                  </strong>
-                  ?
-                </p>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={
-                    declineSameLocation
-                  }
-                  disabled={saving}
-                >
-                  No, Different Location
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={
-                    confirmSameLocation
-                  }
-                  disabled={saving}
-                >
-                  {saving
-                    ? 'Saving...'
-                    : 'Yes, Same Location'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
     </div>
-  );
+  )
 }
+
+export default ScheduleRequests
