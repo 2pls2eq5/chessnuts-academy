@@ -49,6 +49,9 @@ function ScheduleRequests() {
   const [approvingId, setApprovingId] = useState(null)
   const [rejectingId, setRejectingId] = useState(null)
 
+  const [relationshipCandidate, setRelationshipCandidate] =
+    useState(null)
+
   async function loadScheduleRequests() {
     setLoading(true)
     setError('')
@@ -201,6 +204,7 @@ function ScheduleRequests() {
     })
 
     setFormError('')
+    setRelationshipCandidate(null)
   }
 
   function openForm() {
@@ -304,6 +308,175 @@ function ScheduleRequests() {
     }))
   }
 
+  async function findRelationshipCandidate(
+    endTime,
+    selectedProgram
+  ) {
+    if (
+      selectedProgram.type !== 'PRIVATE' ||
+      selectedProgram.location !== 'STUDENT_PLACE'
+    ) {
+      return null
+    }
+
+    /*
+     * Find an adjacent request:
+     *
+     * existing.end_time = new.start_time
+     * OR
+     * new.end_time = existing.start_time
+     */
+    const { data: requestCandidates, error: requestError } =
+      await supabase
+        .from('student_schedule_requests')
+        .select(`
+          id,
+          student_id,
+          coach_id,
+          day_of_week,
+          start_time,
+          end_time,
+          timezone,
+          location,
+          status,
+          created_at,
+          students (
+            profiles (
+              display_name
+            )
+          )
+        `)
+        .eq('coach_id', form.coach_id)
+        .eq('day_of_week', Number(form.day_of_week))
+        .eq('timezone', form.timezone)
+        .eq('location', 'student_location')
+        .in('status', ['pending', 'approved'])
+        .neq('student_id', form.student_id)
+
+    if (requestError) {
+      throw new Error(requestError.message)
+    }
+
+    const matchingRequest =
+      (requestCandidates || []).find((request) => {
+        return (
+          request.end_time?.slice(0, 5) ===
+            form.start_time.slice(0, 5) ||
+          request.start_time?.slice(0, 5) ===
+            endTime.slice(0, 5)
+        )
+      })
+
+    if (matchingRequest) {
+      return {
+        type: 'request',
+        id: matchingRequest.id,
+        studentName:
+          matchingRequest.students?.profiles
+            ?.display_name ||
+          'Unnamed Student',
+        startTime: matchingRequest.start_time,
+        endTime: matchingRequest.end_time,
+      }
+    }
+
+    const { data: scheduleCandidates, error: scheduleError } =
+      await supabase
+        .from('student_schedules')
+        .select(`
+          id,
+          student_id,
+          coach_id,
+          day_of_week,
+          start_time,
+          end_time,
+          timezone,
+          location,
+          status,
+          students (
+            profiles (
+              display_name
+            )
+          )
+        `)
+        .eq('coach_id', form.coach_id)
+        .eq('day_of_week', Number(form.day_of_week))
+        .eq('timezone', form.timezone)
+        .eq('location', 'student_location')
+        .eq('status', 'active')
+        .neq('student_id', form.student_id)
+
+    if (scheduleError) {
+      throw new Error(scheduleError.message)
+    }
+
+    const matchingSchedule =
+      (scheduleCandidates || []).find((schedule) => {
+        return (
+          schedule.end_time?.slice(0, 5) ===
+            form.start_time.slice(0, 5) ||
+          schedule.start_time?.slice(0, 5) ===
+            endTime.slice(0, 5)
+        )
+      })
+
+    if (matchingSchedule) {
+      return {
+        type: 'schedule',
+        id: matchingSchedule.id,
+        studentName:
+          matchingSchedule.students?.profiles
+            ?.display_name ||
+          'Unnamed Student',
+        startTime: matchingSchedule.start_time,
+        endTime: matchingSchedule.end_time,
+      }
+    }
+
+    return null
+  }
+
+  async function submitScheduleRequest(
+    relationship = null
+  ) {
+    const selectedProgram = programs.find(
+      (program) => program.id === form.program_id
+    )
+
+    const endTime = calculateEndTime(
+      form.start_time,
+      selectedProgram?.duration
+    )
+
+    const { error } = await supabase.rpc(
+      'create_schedule_request',
+      {
+        p_student_id: form.student_id,
+        p_coach_id: form.coach_id,
+        p_program_id: form.program_id,
+        p_day_of_week: Number(form.day_of_week),
+        p_start_time: form.start_time,
+        p_end_time: endTime,
+        p_timezone: form.timezone,
+        p_notes: form.notes.trim() || null,
+        p_location: form.location.trim() || null,
+        p_maps_url: form.maps_url.trim() || null,
+        p_related_request_id:
+          relationship?.type === 'request'
+            ? relationship.id
+            : null,
+        p_related_schedule_id:
+          relationship?.type === 'schedule'
+            ? relationship.id
+            : null,
+      }
+    )
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
+
   async function createScheduleRequest(e) {
     e.preventDefault()
 
@@ -365,31 +538,68 @@ function ScheduleRequests() {
 
     setFormLoading(true)
 
-    const { error } = await supabase.rpc(
-      'create_schedule_request',
-      {
-        p_student_id: form.student_id,
-        p_coach_id: form.coach_id,
-        p_program_id: form.program_id,
-        p_day_of_week: Number(form.day_of_week),
-        p_start_time: form.start_time,
-        p_end_time: endTime,
-        p_timezone: form.timezone,
-        p_notes: form.notes.trim() || null,
-        p_location: form.location.trim() || null,
-        p_maps_url: form.maps_url.trim() || null,
-      }
-    )
+    try {
+      const candidate =
+        await findRelationshipCandidate(
+          endTime,
+          selectedProgram
+        )
 
-    if (error) {
+      if (candidate) {
+        setRelationshipCandidate(candidate)
+        setFormLoading(false)
+        return
+      }
+
+      await submitScheduleRequest()
+
+      setFormLoading(false)
+      closeForm()
+      await loadScheduleRequests()
+    } catch (error) {
       setFormError(error.message)
       setFormLoading(false)
+    }
+  }
+
+  async function confirmRelationship() {
+    if (!relationshipCandidate) {
       return
     }
 
-    setFormLoading(false)
-    closeForm()
-    await loadScheduleRequests()
+    setFormLoading(true)
+    setFormError('')
+
+    try {
+      await submitScheduleRequest(
+        relationshipCandidate
+      )
+
+      setRelationshipCandidate(null)
+      setFormLoading(false)
+      closeForm()
+      await loadScheduleRequests()
+    } catch (error) {
+      setFormError(error.message)
+      setFormLoading(false)
+    }
+  }
+
+  async function declineRelationship() {
+    setFormLoading(true)
+    setFormError('')
+
+    try {
+      await submitScheduleRequest()
+
+      setRelationshipCandidate(null)
+      setFormLoading(false)
+      closeForm()
+      await loadScheduleRequests()
+    } catch (error) {
+      setFormError(error.message)
+      setFormLoading(false)
+    }
   }
 
   async function approveScheduleRequest(requestId) {
@@ -803,11 +1013,64 @@ function ScheduleRequests() {
                 disabled={formLoading}
               >
                 {formLoading
-                  ? 'Creating...'
+                  ? 'Checking...'
                   : 'Create Request'}
               </button>
             </div>
           </form>
+
+          {relationshipCandidate && (
+            <div className="modal-backdrop">
+              <div className="modal-card">
+                <h2>Same Location?</h2>
+
+                <p>
+                  This schedule is directly adjacent to{' '}
+                  <strong>
+                    {relationshipCandidate.studentName}
+                  </strong>
+                  's existing{' '}
+                  {relationshipCandidate.type ===
+                  'request'
+                    ? 'schedule request'
+                    : 'schedule'}
+                  .
+                </p>
+
+                <p>
+                  Is this at the same location with{' '}
+                  <strong>
+                    {relationshipCandidate.studentName}
+                  </strong>
+                  ?
+                </p>
+
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={declineRelationship}
+                    disabled={formLoading}
+                  >
+                    {formLoading
+                      ? 'Creating...'
+                      : 'No'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={confirmRelationship}
+                    disabled={formLoading}
+                  >
+                    {formLoading
+                      ? 'Creating...'
+                      : 'Yes, Same Location'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     )
