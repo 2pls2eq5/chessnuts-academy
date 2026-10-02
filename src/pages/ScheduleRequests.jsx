@@ -21,8 +21,7 @@ const TIMEZONES = [
 
 function ScheduleRequests() {
   const [loading, setLoading] = useState(true)
-  const [scheduleRequests, setScheduleRequests] =
-    useState([])
+  const [scheduleRequests, setScheduleRequests] = useState([])
 
   const [students, setStudents] = useState([])
   const [coaches, setCoaches] = useState([])
@@ -38,6 +37,8 @@ function ScheduleRequests() {
     day_of_week: '',
     start_time: '',
     timezone: 'Asia/Jakarta',
+    location: '',
+    maps_url: '',
     notes: '',
   })
 
@@ -63,6 +64,10 @@ function ScheduleRequests() {
         start_time,
         end_time,
         timezone,
+        location,
+        maps_url,
+        related_request_id,
+        related_schedule_id,
         notes,
         status,
         student_level,
@@ -190,6 +195,8 @@ function ScheduleRequests() {
       day_of_week: '',
       start_time: '',
       timezone: 'Asia/Jakarta',
+      location: '',
+      maps_url: '',
       notes: '',
     })
 
@@ -275,9 +282,18 @@ function ScheduleRequests() {
   }
 
   function handleProgramChange(programId) {
+    const selectedProgram = programs.find(
+      (program) => program.id === programId
+    )
+
     setForm((current) => ({
       ...current,
       program_id: programId,
+      location:
+        selectedProgram?.location === 'COACH_PLACE'
+          ? 'coach_location'
+          : '',
+      maps_url: '',
     }))
   }
 
@@ -339,6 +355,14 @@ function ScheduleRequests() {
       return
     }
 
+    if (
+      selectedProgram.location === 'STUDENT_PLACE' &&
+      !form.location.trim()
+    ) {
+      setFormError('Please enter the student location.')
+      return
+    }
+
     setFormLoading(true)
 
     const { error } = await supabase.rpc(
@@ -352,6 +376,8 @@ function ScheduleRequests() {
         p_end_time: endTime,
         p_timezone: form.timezone,
         p_notes: form.notes.trim() || null,
+        p_location: form.location.trim() || null,
+        p_maps_url: form.maps_url.trim() || null,
       }
     )
 
@@ -590,6 +616,67 @@ function ScheduleRequests() {
               )}
             </div>
 
+            {selectedProgram?.location === 'COACH_PLACE' && (
+              <div className="form-group">
+                <label className="form-label">
+                  Location
+                </label>
+
+                <input
+                  className="form-input"
+                  type="text"
+                  value="Coach Place"
+                  readOnly
+                />
+
+                <div className="form-help">
+                  This program takes place at the coach location.
+                </div>
+              </div>
+            )}
+
+            {selectedProgram?.location === 'STUDENT_PLACE' && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">
+                    Student Place
+                  </label>
+
+                  <input
+                    className="form-input"
+                    type="text"
+                    value={form.location}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        location: e.target.value,
+                      }))
+                    }
+                    placeholder="Enter student location"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Google Maps URL
+                  </label>
+
+                  <input
+                    className="form-input"
+                    type="url"
+                    value={form.maps_url}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        maps_url: e.target.value,
+                      }))
+                    }
+                    placeholder="Optional Google Maps link"
+                  />
+                </div>
+              </>
+            )}
+
             <div className="form-group">
               <label className="form-label">
                 Day
@@ -782,6 +869,7 @@ function ScheduleRequests() {
                     <th>Level</th>
                     <th>Coach</th>
                     <th>Program</th>
+                    <th>Location</th>
                     <th>Day</th>
                     <th>Time</th>
                     <th>Status</th>
@@ -832,6 +920,14 @@ function ScheduleRequests() {
                             {formatProgram(
                               request.programs
                             )}
+                          </td>
+
+                          <td>
+                            {request.location ===
+                            'coach_location'
+                              ? 'Coach Place'
+                              : request.location ||
+                                '—'}
                           </td>
 
                           <td>
