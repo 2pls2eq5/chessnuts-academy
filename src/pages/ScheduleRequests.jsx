@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { getStudentLevelLabel } from '../utils/studentLevel';
+import { getStudentLevelLabel } from '../utils/studentLevels';
 import AcademyHeader from '../components/AcademyHeader';
 
 const DAYS = [
