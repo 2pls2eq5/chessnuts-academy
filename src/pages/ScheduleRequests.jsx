@@ -46,9 +46,7 @@ return '';
 const endHours = Math.floor(totalMinutes / 60);
 const endMinutes = totalMinutes % 60;
 
-return `${String(endHours).padStart(2, '0')}:${String(
-    endMinutes
-  ).padStart(2, '0')}:00`;
+return ${String(endHours).padStart(2, '0')}:${String( endMinutes ).padStart(2, '0')}:00;
 }
 
 function isAdjacent(startA, endA, startB, endB) {
@@ -66,7 +64,6 @@ const [programs, setPrograms] = useState([]);
 
 const [search, setSearch] = useState('');
 const [showForm, setShowForm] = useState(false);
-
 const [error, setError] = useState('');
 
 const [locationCandidate, setLocationCandidate] = useState(null);
@@ -113,7 +110,6 @@ async function loadData() {
 setLoading(true);
 setError('');
 
-
 try {
   await Promise.all([
     loadScheduleRequests(),
@@ -128,55 +124,19 @@ try {
   setLoading(false);
 }
 
-
 }
 
 async function loadScheduleRequests() {
 const { data, error: queryError } = await supabase
 .from('student_schedule_requests')
-.select(`         id,
-        student_id,
-        coach_id,
-        program_id,
-        day_of_week,
-        start_time,
-        end_time,
-        timezone,
-        location,
-        maps_url,
-        notes,
-        status,
-        student_level,
-        related_request_id,
-        related_schedule_id,
-        created_at,
-        students (
-          profiles (
-            display_name
-          )
-        ),
-        coaches (
-          profiles (
-            display_name
-          )
-        ),
-        programs (
-          name,
-          type,
-          mode,
-          location,
-          duration
-        )
-      `)
+.select( id, student_id, coach_id, program_id, day_of_week, start_time, end_time, timezone, location, maps_url, notes, status, student_level, related_request_id, related_schedule_id, created_at, students ( profiles ( display_name ) ), coaches ( profiles ( display_name ) ), programs ( name, type, mode, location, duration ) )
 .order('created_at', {
 ascending: false,
 });
 
-
 if (queryError) throw queryError;
 
 setScheduleRequests(data || []);
-
 
 }
 
@@ -188,14 +148,8 @@ programsResult,
 ] = await Promise.all([
 supabase
 .from('students')
-.select(`           id,
-          profiles (
-            display_name
-          )
-        `)
-.eq('status', 'active')
-.order('profiles(display_name)'),
-
+.select( id, profiles ( display_name ) )
+.eq('status', 'active'),
 
   supabase
     .from('coaches')
@@ -205,8 +159,7 @@ supabase
         display_name
       )
     `)
-    .eq('status', 'active')
-    .order('profiles(display_name)'),
+    .eq('status', 'active'),
 
   supabase
     .from('programs')
@@ -238,7 +191,6 @@ setStudents(studentsResult.data || []);
 setCoaches(coachesResult.data || []);
 setPrograms(programsResult.data || []);
 
-
 }
 
 function resetForm() {
@@ -254,27 +206,22 @@ maps_url: '',
 notes: '',
 });
 
-
 setLocationCandidate(null);
 setShowLocationModal(false);
-
 
 }
 
 function closeForm() {
 if (saving) return;
 
-
 setShowForm(false);
 setError('');
 resetForm();
-
 
 }
 
 function handleChange(event) {
 const { name, value } = event.target;
-
 
 setForm((current) => ({
   ...current,
@@ -293,7 +240,6 @@ if (name === 'program_id') {
   setShowLocationModal(false);
 }
 
-
 }
 
 async function findAdjacentLocationCandidate() {
@@ -307,83 +253,70 @@ form.day_of_week === '' ||
 return null;
 }
 
-
 const dayOfWeek = Number(form.day_of_week);
 
-/*
- * We intentionally do NOT filter by program_id here.
- *
- * The question is:
- * "Is this coach already going to a Student Location
- * immediately before or after this requested class?"
- *
- * It can therefore be another program.
- */
-
-const [
-  requestsResult,
-  schedulesResult,
-] = await Promise.all([
-  supabase
-    .from('student_schedule_requests')
-    .select(`
-      id,
-      student_id,
-      coach_id,
-      program_id,
-      day_of_week,
-      start_time,
-      end_time,
-      timezone,
-      location,
-      status,
-      students (
-        profiles (
-          display_name
+const [requestsResult, schedulesResult] =
+  await Promise.all([
+    supabase
+      .from('student_schedule_requests')
+      .select(`
+        id,
+        student_id,
+        coach_id,
+        program_id,
+        day_of_week,
+        start_time,
+        end_time,
+        timezone,
+        location,
+        status,
+        students (
+          profiles (
+            display_name
+          )
+        ),
+        programs (
+          name,
+          type,
+          mode,
+          location
         )
-      ),
-      programs (
-        name,
-        type,
-        mode,
-        location
-      )
-    `)
-    .eq('coach_id', form.coach_id)
-    .eq('day_of_week', dayOfWeek)
-    .eq('timezone', form.timezone)
-    .in('status', ['pending', 'approved']),
+      `)
+      .eq('coach_id', form.coach_id)
+      .eq('day_of_week', dayOfWeek)
+      .eq('timezone', form.timezone)
+      .in('status', ['pending', 'approved']),
 
-  supabase
-    .from('student_schedules')
-    .select(`
-      id,
-      student_id,
-      coach_id,
-      program_id,
-      day_of_week,
-      start_time,
-      end_time,
-      timezone,
-      location,
-      status,
-      students (
-        profiles (
-          display_name
+    supabase
+      .from('student_schedules')
+      .select(`
+        id,
+        student_id,
+        coach_id,
+        program_id,
+        day_of_week,
+        start_time,
+        end_time,
+        timezone,
+        location,
+        status,
+        students (
+          profiles (
+            display_name
+          )
+        ),
+        programs (
+          name,
+          type,
+          mode,
+          location
         )
-      ),
-      programs (
-        name,
-        type,
-        mode,
-        location
-      )
-    `)
-    .eq('coach_id', form.coach_id)
-    .eq('day_of_week', dayOfWeek)
-    .eq('timezone', form.timezone)
-    .eq('status', 'active'),
-]);
+      `)
+      .eq('coach_id', form.coach_id)
+      .eq('day_of_week', dayOfWeek)
+      .eq('timezone', form.timezone)
+      .eq('status', 'active'),
+  ]);
 
 if (requestsResult.error) {
   throw requestsResult.error;
@@ -409,7 +342,7 @@ const scheduleCandidates = (
     'student_location'
 );
 
-const allCandidates = [
+const candidates = [
   ...requestCandidates.map((item) => ({
     ...item,
     source: 'request',
@@ -420,17 +353,16 @@ const allCandidates = [
   })),
 ];
 
-const candidate = allCandidates.find((item) =>
-  isAdjacent(
-    form.start_time,
-    endTime,
-    item.start_time,
-    item.end_time
-  )
+return (
+  candidates.find((item) =>
+    isAdjacent(
+      form.start_time,
+      endTime,
+      item.start_time,
+      item.end_time
+    )
+  ) || null
 );
-
-return candidate || null;
-
 
 }
 
@@ -460,17 +392,14 @@ p_related_schedule_id: relatedScheduleId,
 }
 );
 
-
 if (rpcError) throw rpcError;
 
 return data;
-
 
 }
 
 async function submitScheduleRequest() {
 setError('');
-
 
 if (
   !form.student_id ||
@@ -496,16 +425,12 @@ if (!endTime) {
   return;
 }
 
-if (isStudentLocation && !form.location.trim()) {
+if (
+  isStudentLocation &&
+  !form.location.trim()
+) {
   setError(
-    'Location is required for Student Location programs.'
-  );
-  return;
-}
-
-if (isCoachLocation && form.maps_url.trim()) {
-  setError(
-    'Google Maps URL is not used for Coach Location.'
+    'Location is required for Student Place programs.'
   );
   return;
 }
@@ -514,18 +439,15 @@ setSaving(true);
 
 try {
   /*
-   * STUDENT_LOCATION:
+   * PRIVATE + STUDENT_LOCATION:
    *
-   * First check whether there is already a class/request
-   * at an immediately adjacent Student Location.
-   *
-   * We only ask the user when this is PRIVATE.
-   *
-   * GROUP is handled automatically by the database function.
+   * Check for an adjacent Student Place class.
+   * If found, ask whether this is the same location.
    */
   if (
     isStudentLocation &&
-    normalizeLocation(selectedProgram.type) === 'private'
+    normalizeLocation(selectedProgram.type) ===
+      'private'
   ) {
     const candidate =
       await findAdjacentLocationCandidate();
@@ -546,40 +468,38 @@ try {
   resetForm();
 } catch (err) {
   console.error(err);
+
   setError(
-    err.message || 'Failed to create schedule request.'
+    err.message ||
+      'Failed to create schedule request.'
   );
 } finally {
   setSaving(false);
 }
-
 
 }
 
 async function confirmSameLocation() {
 if (!locationCandidate) return;
 
-
 setSaving(true);
 setError('');
 
 try {
-  let relatedRequestId = null;
-  let relatedScheduleId = null;
+  const relatedRequestId =
+    locationCandidate.source === 'request'
+      ? locationCandidate.id
+      : null;
 
-  if (locationCandidate.source === 'request') {
-    relatedRequestId = locationCandidate.id;
-  } else {
-    relatedScheduleId = locationCandidate.id;
-  }
+  const relatedScheduleId =
+    locationCandidate.source === 'schedule'
+      ? locationCandidate.id
+      : null;
 
   await createScheduleRequestRpc({
     relatedRequestId,
     relatedScheduleId,
   });
-
-  setShowLocationModal(false);
-  setLocationCandidate(null);
 
   await loadScheduleRequests();
 
@@ -590,7 +510,7 @@ try {
 
   setError(
     err.message ||
-      'The related Student Location could not be created.'
+      'The related Student Place could not be created.'
   );
 
   setShowLocationModal(false);
@@ -599,28 +519,20 @@ try {
   setSaving(false);
 }
 
-
 }
 
 function declineSameLocation() {
-/*
-* IMPORTANT:
-*
-* We do NOT create and then reject the request.
-*
-* The user said the location is different, so the request
-* should simply not be submitted.
-*/
 setShowLocationModal(false);
 setLocationCandidate(null);
+
 setError(
-'Request cancelled because the location is different from the adjacent class.'
+  'Request cancelled because the location is different from the adjacent class.'
 );
+
 }
 
 async function approveRequest(requestId) {
 if (saving) return;
-
 
 setSaving(true);
 setError('');
@@ -638,19 +550,19 @@ try {
   await loadScheduleRequests();
 } catch (err) {
   console.error(err);
+
   setError(
-    err.message || 'Failed to approve schedule request.'
+    err.message ||
+      'Failed to approve schedule request.'
   );
 } finally {
   setSaving(false);
 }
 
-
 }
 
 async function rejectRequest(requestId) {
 if (saving) return;
-
 
 setSaving(true);
 setError('');
@@ -668,13 +580,14 @@ try {
   await loadScheduleRequests();
 } catch (err) {
   console.error(err);
+
   setError(
-    err.message || 'Failed to reject schedule request.'
+    err.message ||
+      'Failed to reject schedule request.'
   );
 } finally {
   setSaving(false);
 }
-
 
 }
 
@@ -694,25 +607,21 @@ coach?.profiles?.display_name ||
 
 function formatTime(time) {
 if (!time) return '-';
-
-
 return time.slice(0, 5);
-
-
 }
 
 function formatStatus(status) {
 if (!status) return '-';
 
-
-return status.charAt(0).toUpperCase() + status.slice(1);
-
+return (
+  status.charAt(0).toUpperCase() +
+  status.slice(1)
+);
 
 }
 
 function getLocationLabel(location) {
 const normalized = normalizeLocation(location);
-
 
 if (normalized === 'student_location') {
   return 'Student Place';
@@ -724,15 +633,13 @@ if (normalized === 'coach_location') {
 
 return location || '-';
 
-
 }
 
-const filteredRequests = scheduleRequests.filter(
-(request) => {
+const filteredRequests =
+scheduleRequests.filter((request) => {
 const studentName = getStudentName(
 request.students
 ).toLowerCase();
-
 
   const coachName = getCoachName(
     request.coaches
@@ -742,21 +649,20 @@ request.students
     request.programs?.name || ''
   ).toLowerCase();
 
-  const searchText = search.toLowerCase();
+  const searchText =
+    search.toLowerCase();
 
   return (
     studentName.includes(searchText) ||
     coachName.includes(searchText) ||
     programName.includes(searchText)
   );
-}
-
-
-);
+});
 
 if (loading) {
-return ( <div className="academy-app"> <AcademyHeader />
-
+return (
+<div className="academy-app">
+<AcademyHeader />
 
     <main className="academy-main">
       <div className="page-state">
@@ -766,18 +672,20 @@ return ( <div className="academy-app"> <AcademyHeader />
   </div>
 );
 
-
 }
 
-return ( <div className="academy-app"> <AcademyHeader />
-
+return (
+<div className="academy-app">
+<AcademyHeader />
 
   <main className="academy-main">
     <div className="page-header">
       <div className="page-header-copy">
         <h1>Schedule Requests</h1>
+
         <p>
-          Manage student requests for recurring schedules.
+          Manage student requests for recurring
+          schedules.
         </p>
       </div>
 
@@ -804,8 +712,10 @@ return ( <div className="academy-app"> <AcademyHeader />
       <div className="card form-card">
         <div className="form-header">
           <h1>New Schedule Request</h1>
+
           <p>
-            Create a recurring schedule request for a student.
+            Create a recurring schedule request
+            for a student.
           </p>
         </div>
 
@@ -926,8 +836,8 @@ return ( <div className="academy-app"> <AcademyHeader />
               />
 
               <div className="form-help">
-                Enter the actual location where the class
-                will take place.
+                Enter the actual location where
+                the class will take place.
               </div>
             </div>
 
@@ -947,7 +857,8 @@ return ( <div className="academy-app"> <AcademyHeader />
               />
 
               <div className="form-help">
-                Optional. You can paste a Google Maps link.
+                Optional. You can paste a Google
+                Maps link.
               </div>
             </div>
           </>
@@ -967,8 +878,8 @@ return ( <div className="academy-app"> <AcademyHeader />
             />
 
             <div className="form-help">
-              The exact Coach Place / station will be handled
-              separately.
+              The exact Coach Place / station will
+              be handled separately.
             </div>
           </div>
         )}
@@ -1190,14 +1101,7 @@ return ( <div className="academy-app"> <AcademyHeader />
                         </td>
 
                         <td>
-                          <span
-                            className={`status-badge ${
-                              request.status ===
-                              'approved'
-                                ? 'status-active'
-                                : ''
-                            }`}
-                          >
+                          <span className="status-badge">
                             {formatStatus(
                               request.status
                             )}
@@ -1263,20 +1167,21 @@ return ( <div className="academy-app"> <AcademyHeader />
 
           <div className="modal-body">
             <p>
-              This class is immediately adjacent to
-              another class where the coach is already
-              going to a Student Place.
+              This class is immediately adjacent
+              to another class where the coach is
+              already going to a Student Place.
             </p>
 
             <div className="card">
               <div>
-                {locationCandidate.students?.profiles
-                  ?.display_name ||
+                {locationCandidate.students
+                  ?.profiles?.display_name ||
                   'Another student'}
               </div>
 
               <div>
-                {locationCandidate.programs?.name ||
+                {locationCandidate.programs
+                  ?.name ||
                   'Another program'}
               </div>
 
