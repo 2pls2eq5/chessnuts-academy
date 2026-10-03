@@ -359,7 +359,7 @@ function ScheduleRequests() {
       .eq('coach_id', form.coach_id)
       .eq('day_of_week', Number(form.day_of_week))
       .eq('timezone', form.timezone)
-      .in('status', ['pending', 'approved'])
+      .in('status', 'pending')
       .neq('student_id', form.student_id)
 
     if (requestError) {
